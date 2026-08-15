@@ -15,7 +15,8 @@ house. Built with Vite + React + Framer Motion.
   was placed over. See *The walkthrough* below.
 - **Scroll-reveal animations** through the rest of the page (fade + rise,
   staggered), with a count-up on the key stats. Motion respects
-  `prefers-reduced-motion`.
+  `prefers-reduced-motion` — including the hero, which under that setting drops
+  the five-screen scroll stage entirely and shows its opening frame as a still.
 - **All the content from lookestatesales.com**: the estate-sale pitch, services
   (liquidation, evaluation, clean-out), what you handle (personal property, real
   estate, commercial), the online auctions section, the one-call process,
@@ -74,28 +75,42 @@ viewport width) and `walk-poster.jpg` for first paint. It is not a colour grade
 phone clip only makes the grain look deliberate. To rebuild after a re-shoot:
 
 ```bash
-# opens on the house sitting across the driveway with the porch in view. The
-# yard flag runs to ~1.15s and the swing through the trees to about 3.5s;
-# neither is what the first frame of a page selling a house should be.
-START=4.0
+# The first frame is a still that everybody sees and most people judge the
+# page on, so it is chosen as a composition, not as a start time: the porch
+# centred, the house filling the upper two thirds, the tree framing the left.
+# Earlier starts have the yard flag (to ~1.15s), the swing through the trees
+# (to ~3.5s), or the house small behind a tree over an empty driveway (to ~8s).
+START=9.0
 
-DRAW="hqdn3d=12:18:18:24,bilateral=sigmaS=20:sigmaR=0.15,split[base][e];\
-[base]lutyuv=y='clip(round(val/48)*48,20,236)',\
-colorlevels=romin=0.08:gomin=0.08:bomin=0.08,\
-eq=saturation=1.60:contrast=1.0:brightness=0.02,format=gbrp[c];\
-[e]format=gray,gblur=sigma=0.85,edgedetect=low=0.026:high=0.08,negate,\
-erosion,erosion,format=gbrp[ink];\
+# The paint. Flatten into areas, correct the tungsten cast the rooms were shot
+# under, step the brightness, then colour.
+FILL="bilateral=sigmaS=24:sigmaR=0.18,bilateral=sigmaS=12:sigmaR=0.10,\
+colorbalance=rm=-0.06:bm=0.08:rh=-0.03:bh=0.04,\
+lutyuv=y='clip(round(val/56)*56,24,236)',\
+colorlevels=romin=0.09:gomin=0.09:bomin=0.09,\
+eq=saturation=1.35:contrast=1.03:brightness=0.02,format=gbrp"
+
+# The ink.
+INK="bilateral=sigmaS=8:sigmaR=0.07,format=yuv444p,extractplanes=y+u+v[ey][eu][ev];\
+[ey]gblur=sigma=0.7,edgedetect=low=0.022:high=0.07[ly];\
+[eu]gblur=sigma=0.7,edgedetect=low=0.018:high=0.05[lu];\
+[ev]gblur=sigma=0.7,edgedetect=low=0.018:high=0.05[lv];\
+[ly][lu]blend=all_mode=lighten[l1];\
+[l1][lv]blend=all_mode=lighten,negate,erosion,erosion,erosion,format=gbrp[ink]"
+
+DRAW="fps=12,scale=1024:-2,hqdn3d=14:20:20:26,split[forfill][foredge];\
+[forfill]${FILL}[c];\
+[foredge]${INK};\
 [c][ink]blend=all_mode=multiply:all_opacity=1.0,format=yuv420p"
 
 ffmpeg -ss $START -i media-src/hero.mp4 \
-  -filter_complex "[0:v]fps=12,scale=1024:-2,${DRAW},split[big][small];\
-[small]scale=640:-2[sm]" \
+  -filter_complex "[0:v]${DRAW},split[big][small];[small]scale=640:-2[sm]" \
   -map "[big]" -an -c:v libx264 -preset slow -crf 33 -g 12 -keyint_min 12 \
     -sc_threshold 0 -pix_fmt yuv420p -movflags +faststart public/media/walk.mp4 \
   -map "[sm]" -an -c:v libx264 -preset slow -crf 34 -g 12 -keyint_min 12 \
     -sc_threshold 0 -pix_fmt yuv420p -movflags +faststart public/media/walk-sm.mp4
 
-ffmpeg -i public/media/walk.mp4 -frames:v 1 -q:v 4 public/media/walk-poster.jpg
+ffmpeg -i public/media/walk.mp4 -frames:v 1 -q:v 2 public/media/walk-poster.jpg
 ```
 
 What each part is doing, and why it is in that order:
@@ -107,31 +122,52 @@ What each part is doing, and why it is in that order:
   near-grey gradient cross its thresholds at different points per channel, which
   is where the rainbow blotching on walls and carpet came from. Quantizing
   brightness alone keeps hue continuous.
-- **the ink branch splits off *before* the posterize** — drawn from the
-  posterized image, the lines trace the banding instead of the objects. The two
-  `erosion` passes after `negate` are what fatten hairlines into outlines heavy
-  enough to read as drawn; without them the whole thing looks like a filter
-  rather than a picture.
+- **the ink comes off a *different* branch than the paint, and a much less
+  smoothed one.** This is the single thing that decides whether the result is a
+  cartoon or a smear, and it took the longest to see. The heavy bilateral is
+  what makes the fills read as painted areas — and it erases, before any
+  detector sees them, exactly the boundaries the outlines are supposed to draw.
+  So the fill branch gets `sigmaS=24` twice over and the ink branch gets
+  `sigmaS=8` once. Turning the flattening up while the ink shared it is what
+  kept dissolving the settee.
+- **the outline is taken from colour as well as brightness.** `edgedetect` works
+  on one plane; run it on luma alone and a cream settee against a cream wall has
+  no edge to find, because the difference between them is almost entirely hue.
+  The three `extractplanes` branches detect on Y, U and V and are unioned with
+  `blend=lighten`, so an outline survives if *any* channel can see it. That is
+  what got the back of the sofa to come out.
+- **three `erosion` passes** — each one fattens the black lines by a pixel.
+  Hairlines read as a filter; 3–4px lines read as drawn.
 - **`fps=12`** — on twos, the cadence of limited hand animation. This is what
   makes it read as animation rather than as video with an effect on it, and it
   is worth understanding as a deliberate choice and not a performance
   compromise: at 24 the same frames look like slightly odd footage. `CineHero`
   has a matching `VIDEO_FPS` that snaps the tracked copy to the same grid, so
   the copy steps with the picture instead of gliding across it.
+- **`colorbalance`** — the rooms were shot under table lamps, and pushing
+  saturation on a tungsten cast turns every interior into a wall of orange. It
+  is a white balance, not a look; without it the staircase and the living room
+  come out the same colour as the wood floor.
 - **`-g 12 -keyint_min 12 -sc_threshold 0`** — a keyframe every second. Scrolling
   back up is the one case that has to seek, and seeks land on keyframes.
 
 Flat areas and hard lines encode cheaply, and half the frames are gone, so this
-comes out well under the graded version: 3.9MB / 1.4MB.
+comes out well under the graded version it replaced: 3.2MB / 1.2MB.
 
-There is a strength ceiling worth knowing about, and it is set by the interiors,
-not the exteriors. Pushed past the values above — coarser posterize, a second
-bilateral pass, `sigmaS` much over 20 — the outside keeps getting better while
-the staged settee in the living room melts into a shapeless blob. A room that
-does not read as furnished is the one thing this section cannot afford, so that
-is the wall. Quantizing the chroma planes as well as the luma is a separate dead
-end: it looks like a cartoon in the sense that a 1970s printing error looks like
-a cartoon.
+Two things that look obviously right and are not:
+
+- **A single palette for the whole film.** Real cel animation is painted from
+  one limited set of colours, so `palettegen` over every frame plus
+  `paletteuse=dither=none` sounds exactly right, and it is not. The palette is
+  built from a histogram, the long final section is a close-up of an orange wood
+  floor, and so the wood takes most of the entries and every cream wall in the
+  house snaps to the nearest peach. At `max_colors=64` the interiors are
+  monochrome orange; 256 gets the reds and greens back and still tints the
+  walls. The fills are already flat from the bilateral and the posterize — the
+  palette was adding a colour cast in exchange for nothing.
+- **Quantizing the chroma planes as well as the luma.** Flat colour cells are
+  the idea; garish green and orange blotches are the result. It looks like a
+  cartoon in the sense that a 1970s printing error looks like a cartoon.
 
 ### The motion track
 
@@ -174,6 +210,14 @@ The opening beat is the exception: its window starts before the clip does
 wheel — it is already fully in rather than at the bottom of its own fade. That,
 plus the placement pass running in a layout effect before the browser's first
 paint, is what stops the hero flashing its copy on load.
+
+> **The beats are currently switched off.** `SHOW_BEATS` at the top of
+> `CineHero.jsx` is `false` while the animation itself is being got right, so
+> that judging the animation means judging the animation. The scrim goes with
+> them — it exists to give copy a floor to stand on — and the `<h1>` stays in
+> the document as screen-reader-only text. Setting the flag back to `true`
+> restores all of it; nothing was deleted, and the beat timings above are
+> current for the 36.8s cut.
 
 ## A note on images
 

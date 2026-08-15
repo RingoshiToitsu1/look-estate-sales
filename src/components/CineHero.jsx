@@ -46,11 +46,11 @@ const BEATS = [
   // the opening beat starts BEFORE the clip does, so that at t=0 — which is
   // what a reader sees before touching the scroll wheel — it is already all the
   // way in rather than at the bottom of a fade
-  { in: -1.5, full: -0.4, hold: 4.0, out: 5.6, x: 50, y: 64 },
-  { in: 6.6, full: 8.0, hold: 11.2, out: 12.6, x: 50, y: 68 },
-  { in: 13.6, full: 15.0, hold: 19.0, out: 20.6, x: 50, y: 66 },
-  { in: 23.0, full: 24.4, hold: 29.4, out: 31.0, x: 50, y: 62 },
-  { in: 34.6, full: 36.0, hold: 99, out: 99, x: 50, y: 58 },
+  { in: -1.5, full: -0.4, hold: 2.4, out: 3.6, x: 50, y: 64 },
+  { in: 4.6, full: 5.8, hold: 8.2, out: 9.4, x: 50, y: 68 },
+  { in: 10.4, full: 11.6, hold: 14.6, out: 15.8, x: 50, y: 66 },
+  { in: 17.6, full: 18.8, hold: 23.0, out: 24.2, x: 50, y: 62 },
+  { in: 31.4, full: 32.6, hold: 99, out: 99, x: 50, y: 58 },
 ]
 
 /* The clip is animated on twos — 12 frames a second, the cadence of limited
@@ -59,6 +59,16 @@ const BEATS = [
    stepping at 12 would slide against the very thing it is supposed to be
    sitting on, and reads instantly as an overlay. */
 const VIDEO_FPS = 12
+
+/* TEMPORARY — the copy is off the hero while the animation itself is being got
+   right, so that judging the animation means judging the animation. Setting
+   this back to true restores all five beats; nothing else was removed, and the
+   track and the placement code below are untouched and still correct.
+
+   The heading stays in the document as screen-reader-only text, because a page
+   with no <h1> at all is a real cost that nobody looking at the animation would
+   ever see. */
+const SHOW_BEATS = false
 
 /* How much of the camera's real motion the copy takes on. Not 1:1, and it can't
    be: the walk is straight at the house, so a point anchored beside the door
@@ -108,6 +118,16 @@ export default function CineHero() {
     const v = videoRef.current
     if (!sec || !v) return
     const beatEls = Array.from(sec.querySelectorAll('[data-beat]'))
+
+    /* Someone who has asked their system for less motion should not be handed a
+       five-screen scroll that drives a camera. They get the opening frame as a
+       still and the page proper below it — the video element with its poster
+       and no source, which is a picture and nothing else. */
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      sec.classList.add('cine--still')
+      return
+    }
+
     sec.classList.add('cine--on')
 
     // resting position; everything after this is transform-only, per frame
@@ -203,8 +223,14 @@ export default function CineHero() {
 
     /* The reader arrives at the top of the page with the video on its first
        frame, so that is what the copy is placed against — before anything is
-       painted, so the opening line is simply there rather than appearing. */
-    place(0)
+       painted, so the opening line is simply there rather than appearing.
+
+       Only when they actually are at the top, though. A refresh half way down
+       the page restores the scroll position, and placing for t=0 there would
+       put the opening beat on screen for exactly one frame before the loop
+       corrected it — the same flash, moved. Leaving the beats hidden for that
+       one frame is invisible; showing the wrong one is not. */
+    if (sec.getBoundingClientRect().top > -1) place(0)
 
     let running = false
     const frame = () => {
@@ -269,8 +295,17 @@ export default function CineHero() {
           poster="./media/walk-poster.jpg"
           aria-hidden="true"
         />
-        <div className="cine__scrim" aria-hidden="true" />
+        {/* The scrim exists to give the copy a floor to stand on. With the copy
+            off, it is just darkening the animation for no one. */}
+        {SHOW_BEATS && <div className="cine__scrim" aria-hidden="true" />}
 
+        {!SHOW_BEATS && (
+          <h1 className="sr-only">
+            Look Estate Sales — a lifetime of belongings, valued with care.
+          </h1>
+        )}
+
+        {SHOW_BEATS && (
         <div className="cine__beats">
           <div className="cine__beat" data-beat="0">
             <span className="tag tag--onDark">Est. Southeast Michigan</span>
@@ -314,6 +349,7 @@ export default function CineHero() {
             </div>
           </div>
         </div>
+        )}
       </div>
     </section>
   )

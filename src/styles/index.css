@@ -84,6 +84,21 @@ img { max-width: 100%; display: block; }
 
 .section { padding-block: var(--section-y); }
 
+/* Available to screen readers and to nothing else. Not display:none, which
+   would take it out of the accessibility tree along with everything else. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ---------- Tag motif (signature) ----------
    A small punched price-tag chip used for eyebrows and data.  */
 .tag {

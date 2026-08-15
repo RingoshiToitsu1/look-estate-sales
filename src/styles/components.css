@@ -197,6 +197,10 @@
 .cine:not(.cine--on) .cine__beat[data-beat='2'],
 .cine:not(.cine--on) .cine__beat[data-beat='3'] { display: none; }
 
+/* Reduced motion: the opening frame as a still, at its natural height. The
+   video element carries a poster and no source, so this is a picture. */
+.cine--still .cine__video { display: block; }
+
 /* ---- the scroll stage ---- */
 .cine--on { height: 560vh; }
 .cine--on .cine__stage {
