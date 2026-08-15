@@ -119,15 +119,15 @@ export default function CineHero() {
     if (!sec || !v) return
     const beatEls = Array.from(sec.querySelectorAll('[data-beat]'))
 
-    /* Someone who has asked their system for less motion should not be handed a
-       five-screen scroll that drives a camera. They get the opening frame as a
-       still and the page proper below it — the video element with its poster
-       and no source, which is a picture and nothing else. */
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      sec.classList.add('cine--still')
-      return
-    }
-
+    /* No prefers-reduced-motion opt-out here, and that is deliberate rather than
+       an oversight. It was tried, and it took the walkthrough away from anyone
+       whose OS has animation effects switched off — which on Windows is a great
+       many people who have never thought about it and are not expecting a page
+       to withhold its main content over it. This section IS the page; a still of
+       it is not a reduced version, it is a broken one. The motion is also
+       entirely scroll-driven: nothing moves unless the reader moves it, which is
+       the behaviour the setting exists to ask for. The reveals further down the
+       page, which do animate on their own, still honour it. */
     sec.classList.add('cine--on')
 
     // resting position; everything after this is transform-only, per frame
@@ -221,17 +221,6 @@ export default function CineHero() {
       }
     }
 
-    /* The reader arrives at the top of the page with the video on its first
-       frame, so that is what the copy is placed against — before anything is
-       painted, so the opening line is simply there rather than appearing.
-
-       Only when they actually are at the top, though. A refresh half way down
-       the page restores the scroll position, and placing for t=0 there would
-       put the opening beat on screen for exactly one frame before the loop
-       corrected it — the same flash, moved. Leaving the beats hidden for that
-       one frame is invisible; showing the wrong one is not. */
-    if (sec.getBoundingClientRect().top > -1) place(0)
-
     let running = false
     const frame = () => {
       if (!running) return
@@ -273,6 +262,26 @@ export default function CineHero() {
       })
     }, { rootMargin: '15% 0px' })
     io.observe(sec)
+
+    /* The reader arrives at the top of the page with the video on its first
+       frame, so that is what the copy is placed against — still inside the
+       layout effect, so it lands before the browser's first paint and the
+       opening line is simply there rather than appearing.
+
+       Only when they actually are at the top, though. A refresh half way down
+       the page restores the scroll position, and placing for t=0 there would
+       put the opening beat on screen for exactly one frame before the loop
+       corrected it — the same flash, moved. Leaving the beats hidden for that
+       one frame is invisible; showing the wrong one is not.
+
+       And it goes LAST, after the observer is already watching. Placing copy is
+       cosmetic; driving the video is the section. Anything that ever throws in
+       here must not be able to take the scroll stage down with it. */
+    try {
+      if (sec.getBoundingClientRect().top > -1) place(0)
+    } catch (err) {
+      console.error('CineHero: initial beat placement failed', err)
+    }
 
     return () => {
       running = false

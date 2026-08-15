@@ -15,8 +15,8 @@ house. Built with Vite + React + Framer Motion.
   was placed over. See *The walkthrough* below.
 - **Scroll-reveal animations** through the rest of the page (fade + rise,
   staggered), with a count-up on the key stats. Motion respects
-  `prefers-reduced-motion` — including the hero, which under that setting drops
-  the five-screen scroll stage entirely and shows its opening frame as a still.
+  `prefers-reduced-motion`. The hero is the exception, on purpose — see
+  *The walkthrough*.
 - **All the content from lookestatesales.com**: the estate-sale pitch, services
   (liquidation, evaluation, clean-out), what you handle (personal property, real
   estate, commercial), the online auctions section, the one-call process,
@@ -210,6 +210,21 @@ The opening beat is the exception: its window starts before the clip does
 wheel — it is already fully in rather than at the bottom of its own fade. That,
 plus the placement pass running in a layout effect before the browser's first
 paint, is what stops the hero flashing its copy on load.
+
+### A note on prefers-reduced-motion
+
+The hero does not honour it, and that is a decision rather than an omission. It
+was implemented — reduced motion dropped the scroll stage and showed the opening
+frame as a still — and it had to come out, because it takes the walkthrough away
+from everyone whose OS has animation effects switched off, which on Windows is a
+lot of people who have never thought about the setting and are not expecting a
+page to withhold its main content over it. This section *is* the page; a still of
+it is not a reduced version of the experience, it is a broken one.
+
+The case for leaving it as it is: nothing here moves on its own. The video only
+advances when the reader scrolls, which is the behaviour the setting is asking
+for in the first place. The reveals further down the page do animate by
+themselves, and those still honour it.
 
 > **The beats are currently switched off.** `SHOW_BEATS` at the top of
 > `CineHero.jsx` is `false` while the animation itself is being got right, so
