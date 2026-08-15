@@ -137,7 +137,11 @@
 .cine {
   position: relative;
   background: var(--navy-3);
-  color: #fff;
+  /* Not white. The scene is a warm dusk lit by lamps, and pure white type sits
+     in front of it as a separate, colder object; a rich cream belongs to the
+     same light. */
+  --cine-ink: #f4e6cd;
+  color: var(--cine-ink);
   /* Copy sits over whatever the camera is pointed at — a lit facade, a lamp-lit
      wall — so it carries its own contrast. All of it hugs the letterforms: a
      hairline edge for hard contrast, then a close drop, then one soft fall-off.
@@ -206,6 +210,10 @@
 .cine--on .cine__sub,
 .cine--on .cine__lead { max-width: none; margin-inline: auto; }
 .cine--on .cine__actions { justify-content: center; pointer-events: auto; }
+/* The eyebrow tag and the outline button belong to the same cream as the copy. */
+.cine .tag--onDark { color: var(--cine-ink); border-color: rgba(244, 230, 205, 0.45); }
+.cine .btn--ghostDark { color: var(--cine-ink); }
+.cine .btn--ghostDark:hover { color: #fff; border-color: rgba(244, 230, 205, 0.75); }
 
 /* ---- beat typography ---- */
 .cine__beat > * + * { margin-top: 1.4rem; }
@@ -220,7 +228,7 @@
 .cine__sub {
   max-width: 44ch;
   font-size: clamp(1.02rem, 0.98rem + 0.4vw, 1.28rem);
-  color: rgba(255,255,255,0.94);
+  color: rgba(244, 230, 205, 0.94);
   text-shadow: var(--cine-shadow);
 }
 .cine__lead {
@@ -243,12 +251,12 @@
   font-size: 0.72rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.86);
+  color: rgba(244, 230, 205, 0.86);
   text-shadow: var(--cine-shadow);
 }
 .cine__cue {
   display: block;
-  color: rgba(255,255,255,0.6);
+  color: rgba(244, 230, 205, 0.62);
   animation: cuebob 2.4s ease-in-out infinite;
 }
 @keyframes cuebob {

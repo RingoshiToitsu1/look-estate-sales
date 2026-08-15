@@ -66,8 +66,15 @@ export function buildScene(tex = {}) {
   const faces = []
 
   /* shade: how much light the surface catches, before fog. */
+  /* `proud` is how far a face is mounted in front of the surface behind it —
+     a window in a facade, a picture on a wall, a tag on a crate. Those sit a
+     few centimetres out, which is nowhere near enough for a centroid to sort
+     them reliably against the metres-wide wall they hang on, so they declare
+     the intent instead and drawList pulls them forward by that much. Keep the
+     values well under the clearance to whatever stands in front (a bookcase is
+     0.7m off the wall), or they will jump ahead of that too. */
   const face = (pts, col, shade = 1, opts = {}) =>
-    faces.push({ pts, col, shade, glow: opts.glow || 0, tex: opts.tex || null })
+    faces.push({ pts, col, shade, glow: opts.glow || 0, tex: opts.tex || null, proud: opts.proud || 0 })
 
   /* A horizontal slab of ground, floor or ceiling. */
   const slab = (x0, z0, x1, z1, y, col, shade, opts) =>
@@ -86,6 +93,21 @@ export function buildScene(tex = {}) {
      long floor or ceiling its gradient. */
   const stripSlab = (x0, z0, x1, z1, y, col, shade, opts, step = 2) => {
     for (let z = z0; z < z1 - 1e-6; z += step) slab(x0, z, x1, Math.min(z + step, z1), y, col, shade, opts)
+  }
+
+  /* Same again for a wall that runs across the view rather than into it. The
+     facade is fifteen metres wide, and one centroid for it sits four metres out
+     to the side of the door — far enough that the hallway just inside sorted in
+     front of the house. */
+  const wallZRun = (z, x0, x1, y0, y1, col, shade, opts, step = 2) => {
+    for (let x = x0; x < x1 - 1e-6; x += step) wallZ(z, x, Math.min(x + step, x1), y0, y1, col, shade, opts)
+  }
+
+  /* A long wall, cut into z-segments. One depth for a fourteen-metre wall
+     sorts the whole thing by its midpoint, so everything past that point in the
+     room ends up painted over — furniture reads as buried in the wall. */
+  const wallRunX = (x, z0, z1, y0, y1, col, shade, step = 2) => {
+    for (let z = z0; z < z1 - 1e-6; z += step) wallX(x, z, Math.min(z + step, z1), y0, y1, col, shade)
   }
 
   /* Anything lying ON a floor — a rug, a runner — is cut OUT of the floor
@@ -151,8 +173,8 @@ export function buildScene(tex = {}) {
   /* ---- the house: facade split around the door opening ---- */
   const FW = 7.4 // facade half-width
   const DOOR_HW = 1.0, DOOR_H = 2.35
-  wallZ(DOOR_Z, -FW, -DOOR_HW, 0, 5.4, SIDING, 0.76)
-  wallZ(DOOR_Z, DOOR_HW, FW, 0, 5.4, SIDING, 0.76)
+  wallZRun(DOOR_Z, -FW, -DOOR_HW, 0, 5.4, SIDING, 0.76)
+  wallZRun(DOOR_Z, DOOR_HW, FW, 0, 5.4, SIDING, 0.76)
   wallZ(DOOR_Z, -DOOR_HW, DOOR_HW, DOOR_H, 5.4, SIDING, 0.76)
   face([[-FW, 5.4, DOOR_Z], [FW, 5.4, DOOR_Z], [0, 7.3, DOOR_Z]], mix(SIDING, NAVY, 0.3), 0.75) // gable
   stripSlab(-FW - 0.4, DOOR_Z, FW + 0.4, DOOR_Z + 9, 5.4, NAVY_D, 0.7) // roof, seen from the drive
@@ -169,8 +191,8 @@ export function buildScene(tex = {}) {
   // windows, lit from inside
   for (const wx of [-5.9, -3.6, 3.6, 5.9]) {
     const half = 0.78
-    wallZ(DOOR_Z - 0.05, wx - half - 0.1, wx + half + 0.1, 1.15, 3.15, mix(SIDING, NAVY, 0.45), 0.8)
-    wallZ(DOOR_Z - 0.06, wx - half, wx + half, 1.25, 3.05, LIT, 0.86, { glow: 0.3 })
+    wallZ(DOOR_Z - 0.05, wx - half - 0.1, wx + half + 0.1, 1.15, 3.15, mix(SIDING, NAVY, 0.45), 0.8, { proud: 0.6 })
+    wallZ(DOOR_Z - 0.06, wx - half, wx + half, 1.25, 3.05, LIT, 0.86, { glow: 0.3, proud: 0.65 })
   }
 
   // the open door, and the light it throws down the steps
@@ -179,20 +201,24 @@ export function buildScene(tex = {}) {
      [-DOOR_HW + 0.28, DOOR_H, DOOR_Z + 1.95], [-DOOR_HW, DOOR_H, DOOR_Z + 0.05]],
     RED, 0.72
   )
-  wallZ(DOOR_Z - 0.02, -DOOR_HW - 0.14, -DOOR_HW, 0, DOOR_H + 0.14, mix(SIDING, RED, 0.2), 0.85)
-  wallZ(DOOR_Z - 0.02, DOOR_HW, DOOR_HW + 0.14, 0, DOOR_H + 0.14, mix(SIDING, RED, 0.2), 0.85)
-  wallZ(DOOR_Z - 0.02, -DOOR_HW - 0.14, DOOR_HW + 0.14, DOOR_H, DOOR_H + 0.14, mix(SIDING, RED, 0.2), 0.85)
+  wallZ(DOOR_Z - 0.02, -DOOR_HW - 0.14, -DOOR_HW, 0, DOOR_H + 0.14, mix(SIDING, RED, 0.2), 0.85, { proud: 0.6 })
+  wallZ(DOOR_Z - 0.02, DOOR_HW, DOOR_HW + 0.14, 0, DOOR_H + 0.14, mix(SIDING, RED, 0.2), 0.85, { proud: 0.6 })
+  wallZ(DOOR_Z - 0.02, -DOOR_HW - 0.14, DOOR_HW + 0.14, DOOR_H, DOOR_H + 0.14, mix(SIDING, RED, 0.2), 0.85, { proud: 0.6 })
   slab(-1.5, 24.4, 1.5, DOOR_Z, 0.455, mix(LIT, [70, 58, 50], 0.42), 1, { glow: 0.12 })
 
   /* ---- inside: the hall, then the living room ---- */
   const HALL_HW = 2.6, HALL_END = 38, ROOM_HW = 5.6, ROOM_END = 52
   floorAround(-HALL_HW, DOOR_Z, HALL_HW, HALL_END, 0, WOOD, 0.92, [-1.1, DOOR_Z + 1, 1.1, HALL_END - 2])
   stripSlab(-HALL_HW, DOOR_Z, HALL_HW, HALL_END, 2.95, INT_CEIL, 0.9)
-  wallX(-HALL_HW, DOOR_Z, HALL_END, 0, 2.95, INT_WALL, 0.78)
-  wallX(HALL_HW, DOOR_Z, HALL_END, 0, 2.95, INT_WALL, 0.88)
-  wallZ(DOOR_Z + 0.02, -HALL_HW, -DOOR_HW, 0, 2.95, INT_WALL, 0.7)
-  wallZ(DOOR_Z + 0.02, DOOR_HW, HALL_HW, 0, 2.95, INT_WALL, 0.7)
-  wallZ(DOOR_Z + 0.02, -DOOR_HW, DOOR_HW, DOOR_H, 2.95, INT_WALL, 0.7)
+  wallRunX(-HALL_HW, DOOR_Z, HALL_END, 0, 2.95, INT_WALL, 0.78)
+  wallRunX(HALL_HW, DOOR_Z, HALL_END, 0, 2.95, INT_WALL, 0.88)
+  wallZ(DOOR_Z + 0.5, -HALL_HW, -DOOR_HW, 0, 2.95, INT_WALL, 0.7)
+  wallZ(DOOR_Z + 0.5, DOOR_HW, HALL_HW, 0, 2.95, INT_WALL, 0.7)
+  wallZ(DOOR_Z + 0.5, -DOOR_HW, DOOR_HW, DOOR_H, 2.95, INT_WALL, 0.7)
+  // the reveal you pass through: the thickness of the wall in the opening
+  wallX(-DOOR_HW, DOOR_Z, DOOR_Z + 0.5, 0, DOOR_H, mix(INT_WALL, WHITE, 0.25), 0.62)
+  wallX(DOOR_HW, DOOR_Z, DOOR_Z + 0.5, 0, DOOR_H, mix(INT_WALL, WHITE, 0.25), 0.7)
+  slab(-DOOR_HW, DOOR_Z, DOOR_HW, DOOR_Z + 0.5, DOOR_H, mix(INT_WALL, WHITE, 0.15), 0.5)
 
   // runner, hall table, a lamp on it
   stripSlab(-1.1, DOOR_Z + 1, 1.1, HALL_END - 2, 0, mix(NAVY, WHITE, 0.15), 0.95)
@@ -201,8 +227,8 @@ export function buildScene(tex = {}) {
 
   // pictures down the hall
   for (const z of [29, 32.5, 35.5]) {
-    wallX(-HALL_HW + 0.04, z, z + 0.9, 1.35, 2.15, mix(WOOD_D, WHITE, 0.35), 0.8)
-    wallX(HALL_HW - 0.04, z + 1.2, z + 2.1, 1.4, 2.1, mix(WOOD_D, WHITE, 0.25), 0.85)
+    wallX(-HALL_HW + 0.04, z, z + 0.9, 1.35, 2.15, mix(WOOD_D, WHITE, 0.35), 0.8, { proud: 0.6 })
+    wallX(HALL_HW - 0.04, z + 1.2, z + 2.1, 1.4, 2.1, mix(WOOD_D, WHITE, 0.25), 0.85, { proud: 0.6 })
   }
 
   // ceiling lights
@@ -213,8 +239,8 @@ export function buildScene(tex = {}) {
 
   floorAround(-ROOM_HW, HALL_END, ROOM_HW, ROOM_END, 0, WOOD, 0.92, [-4.1, 44, 4.1, 51])
   stripSlab(-ROOM_HW, HALL_END, ROOM_HW, ROOM_END, 3.3, INT_CEIL, 0.88)
-  wallX(-ROOM_HW, HALL_END, ROOM_END, 0, 3.3, INT_WALL, 0.78)
-  wallX(ROOM_HW, HALL_END, ROOM_END, 0, 3.3, INT_WALL, 0.88)
+  wallRunX(-ROOM_HW, HALL_END, ROOM_END, 0, 3.3, INT_WALL, 0.78)
+  wallRunX(ROOM_HW, HALL_END, ROOM_END, 0, 3.3, INT_WALL, 0.88)
   wallZ(ROOM_END, -ROOM_HW, ROOM_HW, 0, 3.3, INT_WALL, 0.95)
   // the wall the hallway punches through
   wallZ(HALL_END, -ROOM_HW, -HALL_HW, 0, 3.3, INT_WALL, 0.62)
@@ -235,8 +261,8 @@ export function buildScene(tex = {}) {
 
   /* A price tag hung on the face of something, turned toward the camera. */
   const tag = (x, z, y) => {
-    wallZ(z - 0.005, x - 0.16, x + 0.16, y - 0.22, y, WHITE, 1)
-    wallZ(z - 0.015, x - 0.185, x + 0.185, y - 0.255, y - 0.205, RED, 1)
+    wallZ(z - 0.005, x - 0.16, x + 0.16, y - 0.22, y, WHITE, 1, { proud: 0.3 })
+    wallZ(z - 0.015, x - 0.185, x + 0.185, y - 0.255, y - 0.205, RED, 1, { proud: 0.32 })
   }
 
   /* A draped table with its lots set out on top. `items` are [dx, dz, w, h, d,
@@ -286,7 +312,7 @@ export function buildScene(tex = {}) {
   face(
     [[CHK.x - CHK.w / 2, 0.02, CHK.z - CHK.d / 2 - 0.02], [CHK.x + CHK.w / 2, 0.02, CHK.z - CHK.d / 2 - 0.02],
      [CHK.x + CHK.w / 2, CHK.h, CHK.z - CHK.d / 2 - 0.02], [CHK.x - CHK.w / 2, CHK.h, CHK.z - CHK.d / 2 - 0.02]],
-    NAVY, 1, { tex: tex.cover }
+    NAVY, 1, { tex: tex.cover, proud: 0.3 }
   )
   box(CHK.x, CHK.z, CHK.w + 0.06, 0.05, CHK.d + 0.06, mix(NAVY, WHITE, 0.12), CHK.h)
   box(CHK.x - 0.75, CHK.z - 0.1, 0.4, 0.22, 0.3, mix(WOOD_D, WHITE, 0.2), 0.85)  // cash box
@@ -307,7 +333,7 @@ export function buildScene(tex = {}) {
   // glass case for the small valuable things, lit from within
   box(4.6, 44.6, 0.75, 0.85, 1.8, WOOD_D, 0)
   box(4.6, 44.6, 0.7, 0.5, 1.72, mix(NAVY, WARM, 0.25), 0.85)
-  wallZ(43.72, 4.3, 4.9, 0.95, 1.3, LIT, 0.9, { glow: 0.24 })
+  wallZ(43.72, 4.3, 4.9, 0.95, 1.3, LIT, 0.9, { glow: 0.24, proud: 0.3 })
   box(4.6, 44.6, 0.74, 0.05, 1.76, mix(BONE, WHITE, 0.6), 1.35)
   tag(4.6, 43.7, 0.8)
 
@@ -318,9 +344,9 @@ export function buildScene(tex = {}) {
   tag(-4.6, 40.45, 0.84)
 
   // curtained window on the left wall — night outside, room reflected warm
-  wallX(-ROOM_HW + 0.05, 46.6, 49.4, 0.9, 2.5, mix(NAVY_D, NAVY, 0.5), 0.7)
-  wallX(-ROOM_HW + 0.06, 46.4, 46.75, 0.6, 2.7, LINEN, 0.72)
-  wallX(-ROOM_HW + 0.06, 49.25, 49.6, 0.6, 2.7, LINEN, 0.72)
+  wallX(-ROOM_HW + 0.05, 46.6, 49.4, 0.9, 2.5, mix(NAVY_D, NAVY, 0.5), 0.7, { proud: 0.55 })
+  wallX(-ROOM_HW + 0.06, 46.4, 46.75, 0.6, 2.7, LINEN, 0.72, { proud: 0.6 })
+  wallX(-ROOM_HW + 0.06, 49.25, 49.6, 0.6, 2.7, LINEN, 0.72, { proud: 0.6 })
 
   box(-4.7, 46.6, 0.5, 1.45, 0.5, WOOD_D, 0) // floor lamp
   box(-4.7, 46.6, 0.34, 0.42, 0.34, LIT, 1.45)
@@ -336,19 +362,19 @@ export function buildScene(tex = {}) {
 
   // fireplace wall: mantel dressed, mirror above, art either side
   box(0, 51.5, 2.8, 1.4, 0.7, mix(INT_WALL, WHITE, 0.3), 0)
-  wallZ(51.14, -0.85, 0.85, 0.15, 1.05, LIT, 0.95, { glow: 0.4 })
+  wallZ(51.14, -0.85, 0.85, 0.15, 1.05, LIT, 0.95, { glow: 0.4, proud: 0.3 })
   box(0, 51.5, 3.2, 0.12, 0.85, mix(INT_WALL, WHITE, 0.22), 1.4)
   box(-1.15, 51.4, 0.12, 0.42, 0.12, mix(WOOD, WHITE, 0.45), 1.52) // candlesticks
   box(-0.92, 51.4, 0.1, 0.32, 0.1, mix(WOOD, WHITE, 0.45), 1.52)
   box(1.1, 51.4, 0.26, 0.34, 0.26, mix(NAVY, WHITE, 0.25), 1.52) // vase
-  wallZ(ROOM_END - 0.05, -1.3, 1.3, 1.85, 2.95, mix(NAVY, WHITE, 0.3), 0.9) // mirror
-  wallZ(ROOM_END - 0.04, -2.9, -1.8, 1.5, 2.5, mix(WOOD_D, WHITE, 0.3), 0.92) // art
-  wallZ(ROOM_END - 0.04, 1.8, 2.9, 1.6, 2.4, mix(WOOD_D, WHITE, 0.2), 0.92)
+  wallZ(ROOM_END - 0.05, -1.3, 1.3, 1.85, 2.95, mix(NAVY, WHITE, 0.3), 0.9, { proud: 0.5 }) // mirror
+  wallZ(ROOM_END - 0.04, -2.9, -1.8, 1.5, 2.5, mix(WOOD_D, WHITE, 0.3), 0.92, { proud: 0.5 }) // art
+  wallZ(ROOM_END - 0.04, 1.8, 2.9, 1.6, 2.4, mix(WOOD_D, WHITE, 0.2), 0.92, { proud: 0.5 })
 
   // art hung down both side walls, the way a sale gets priced up
   for (const z of [42.6, 45.4, 48.2]) {
-    wallX(-ROOM_HW + 0.04, z, z + 1.0, 1.6, 2.5, mix(WOOD_D, WHITE, 0.28), 0.78)
-    wallX(ROOM_HW - 0.04, z + 0.6, z + 1.5, 1.7, 2.45, mix(WOOD_D, WHITE, 0.2), 0.86)
+    wallX(-ROOM_HW + 0.04, z, z + 1.0, 1.6, 2.5, mix(WOOD_D, WHITE, 0.28), 0.78, { proud: 0.6 })
+    wallX(ROOM_HW - 0.04, z + 0.6, z + 1.5, 1.7, 2.45, mix(WOOD_D, WHITE, 0.2), 0.86, { proud: 0.6 })
   }
 
   // pendant lights over the tables — the pin-spots that make a sale look staged
@@ -429,13 +455,21 @@ export function drawList(faces, cam, view) {
   const items = []
 
   for (const fc of faces) {
-    let maxZ = -Infinity, sum = 0
+    let maxZ = -Infinity, sum = 0, cx3 = 0, cy3 = 0
+    const n = fc.pts.length
     for (const q of fc.pts) {
       if (q[2] > maxZ) maxZ = q[2]
+      cx3 += q[0]
+      cy3 += q[1]
       sum += q[2]
     }
     if (maxZ <= near) continue
-    const depth = sum / fc.pts.length - cam.z
+    /* Distance from the camera, not distance along z. A side wall and the
+       bookcase standing against it are at much the same z, and it is the metre
+       and a half between them ACROSS the room that decides which occludes the
+       other — a z-only key gets that backwards and paints the wall over the
+       furniture. */
+    const depth = Math.hypot(cx3 / n - cam.x, cy3 / n - cam.y, sum / n - cam.z) - fc.proud
     if (depth > fogEnd + 14) continue
     const poly = clipNear(fc.pts, near)
     if (poly.length < 3) continue
