@@ -217,6 +217,13 @@
   text-wrap: balance;
   pointer-events: none;
   will-change: opacity, transform;
+  /* Hidden until placed. On the stage all five beats sit on top of each other,
+     so anything that paints before the first placement is five lines of copy
+     in a heap. JS sets the opening beat visible in the same tick it adds
+     .cine--on, before the browser paints — this is the belt to that's braces.
+     Scoped to .cine--on so the no-JS fallback still just shows the copy. */
+  opacity: 0;
+  visibility: hidden;
 }
 .cine--on .cine__beat + .cine__beat { margin-top: 0; }
 .cine--on .cine__title,

@@ -20,7 +20,7 @@ import { writeFileSync, mkdirSync } from 'node:fs'
 
 const FF = process.env.FFMPEG || 'ffmpeg'
 const SRC = 'media-src/hero.mp4'
-const START = 1.5
+const START = 4.0
 const W = 160, H = 90            // tracking resolution
 const OUT = 'src/data/track.js'
 

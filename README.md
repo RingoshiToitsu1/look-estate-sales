@@ -74,24 +74,25 @@ viewport width) and `walk-poster.jpg` for first paint. It is not a colour grade
 phone clip only makes the grain look deliberate. To rebuild after a re-shoot:
 
 ```bash
-# the flag is in frame until ~1.15s; 1.5 opens on the house coming out
-# from behind the trees
-START=1.5
+# opens on the house sitting across the driveway with the porch in view. The
+# yard flag runs to ~1.15s and the swing through the trees to about 3.5s;
+# neither is what the first frame of a page selling a house should be.
+START=4.0
 
-DRAW="hqdn3d=12:18:18:24,bilateral=sigmaS=26:sigmaR=0.17,split[base][e];\
-[base]lutyuv=y='clip(round(val/40)*40,20,236)',\
+DRAW="hqdn3d=12:18:18:24,bilateral=sigmaS=20:sigmaR=0.15,split[base][e];\
+[base]lutyuv=y='clip(round(val/48)*48,20,236)',\
 colorlevels=romin=0.08:gomin=0.08:bomin=0.08,\
-eq=saturation=1.55:contrast=0.99:brightness=0.02,format=gbrp[c];\
-[e]format=gray,gblur=sigma=1.0,edgedetect=low=0.045:high=0.13,negate,erosion,\
-erosion,gblur=sigma=0.45,format=gbrp[ink];\
+eq=saturation=1.60:contrast=1.0:brightness=0.02,format=gbrp[c];\
+[e]format=gray,gblur=sigma=0.85,edgedetect=low=0.026:high=0.08,negate,\
+erosion,erosion,format=gbrp[ink];\
 [c][ink]blend=all_mode=multiply:all_opacity=1.0,format=yuv420p"
 
 ffmpeg -ss $START -i media-src/hero.mp4 \
-  -filter_complex "[0:v]fps=24,scale=1024:-2,${DRAW},split[big][small];\
+  -filter_complex "[0:v]fps=12,scale=1024:-2,${DRAW},split[big][small];\
 [small]scale=640:-2[sm]" \
-  -map "[big]" -an -c:v libx264 -preset slow -crf 33 -g 24 -keyint_min 24 \
+  -map "[big]" -an -c:v libx264 -preset slow -crf 33 -g 12 -keyint_min 12 \
     -sc_threshold 0 -pix_fmt yuv420p -movflags +faststart public/media/walk.mp4 \
-  -map "[sm]" -an -c:v libx264 -preset slow -crf 34 -g 24 -keyint_min 24 \
+  -map "[sm]" -an -c:v libx264 -preset slow -crf 34 -g 12 -keyint_min 12 \
     -sc_threshold 0 -pix_fmt yuv420p -movflags +faststart public/media/walk-sm.mp4
 
 ffmpeg -i public/media/walk.mp4 -frames:v 1 -q:v 4 public/media/walk-poster.jpg
@@ -107,20 +108,30 @@ What each part is doing, and why it is in that order:
   is where the rainbow blotching on walls and carpet came from. Quantizing
   brightness alone keeps hue continuous.
 - **the ink branch splits off *before* the posterize** — drawn from the
-  posterized image, the lines trace the banding instead of the objects. The
-  `erosion` after `negate` is what fattens hairlines into something that still
-  reads at 1024 wide.
-- **`-g 24 -keyint_min 24 -sc_threshold 0`** — a keyframe every second. Scrolling
+  posterized image, the lines trace the banding instead of the objects. The two
+  `erosion` passes after `negate` are what fatten hairlines into outlines heavy
+  enough to read as drawn; without them the whole thing looks like a filter
+  rather than a picture.
+- **`fps=12`** — on twos, the cadence of limited hand animation. This is what
+  makes it read as animation rather than as video with an effect on it, and it
+  is worth understanding as a deliberate choice and not a performance
+  compromise: at 24 the same frames look like slightly odd footage. `CineHero`
+  has a matching `VIDEO_FPS` that snaps the tracked copy to the same grid, so
+  the copy steps with the picture instead of gliding across it.
+- **`-g 12 -keyint_min 12 -sc_threshold 0`** — a keyframe every second. Scrolling
   back up is the one case that has to seek, and seeks land on keyframes.
 
-Flat areas and hard lines encode cheaply, so this comes out smaller than the
-graded version did (4.1MB / 1.6MB) despite the higher CRF.
+Flat areas and hard lines encode cheaply, and half the frames are gone, so this
+comes out well under the graded version: 3.9MB / 1.4MB.
 
-There is a strength ceiling worth knowing about. Pushed further — coarser
-posterize, a second bilateral pass — the exteriors keep improving but the
-interiors stop working: the staged settee dissolves into a blob, and a room that
-doesn't read as furnished is the one thing this section cannot afford. The
-values above sit just under that.
+There is a strength ceiling worth knowing about, and it is set by the interiors,
+not the exteriors. Pushed past the values above — coarser posterize, a second
+bilateral pass, `sigmaS` much over 20 — the outside keeps getting better while
+the staged settee in the living room melts into a shapeless blob. A room that
+does not read as furnished is the one thing this section cannot afford, so that
+is the wall. Quantizing the chroma planes as well as the luma is a separate dead
+end: it looks like a cartoon in the sense that a 1970s printing error looks like
+a cartoon.
 
 ### The motion track
 
@@ -155,8 +166,14 @@ Beat timings are seconds into the *trimmed* clip, so changing `START` shifts all
 of them by the same amount. Check one by pulling the frame it lands on:
 
 ```bash
-ffmpeg -ss 17.5 -i public/media/walk.mp4 -frames:v 1 beat2.jpg
+ffmpeg -ss 15 -i public/media/walk.mp4 -frames:v 1 beat2.jpg
 ```
+
+The opening beat is the exception: its window starts before the clip does
+(`in: -1.5`), so that at t=0 — what a reader sees before touching the scroll
+wheel — it is already fully in rather than at the bottom of its own fade. That,
+plus the placement pass running in a layout effect before the browser's first
+paint, is what stops the hero flashing its copy on load.
 
 ## A note on images
 

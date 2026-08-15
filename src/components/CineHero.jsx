@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { SITE } from '../data.js'
 import { TRACK, TRACK_FPS } from '../data/track.js'
 
@@ -9,8 +9,11 @@ import { TRACK, TRACK_FPS } from '../data/track.js'
    graded: flattened into painted areas with ink lines over them, which is what
    gets rid of the phone-sensor grain instead of trying to hide it. Scroll
    decides where in the walk you are; the video decodes at its own framerate to
-   get there. The clip starts after the yard flag has left frame, so the opening
-   shot is the house coming out from behind the trees.
+   get there. It is cut to open on the house sitting across the driveway — the
+   yard flag and the swing through the trees that came before it are gone, so
+   the first frame a reader sees is the thing being sold. And it runs on twos,
+   at 12fps, which is the cadence that reads as animation rather than as video
+   someone put a filter over.
 
    Why it isn't soft any more. The first version exploded the clip into stills
    and cross-faded between them, so every scroll position BETWEEN two stills was
@@ -40,12 +43,22 @@ import { TRACK, TRACK_FPS } from '../data/track.js'
    of the frame, at the moment the beat is fully in (`full`) — from there it is
    the camera track, not a hand-drawn curve, that carries it. */
 const BEATS = [
-  { in: 0.0, full: 0.6, hold: 4.0, out: 5.4, x: 50, y: 64 },
-  { in: 7.1, full: 8.5, hold: 12.5, out: 14.1, x: 50, y: 68 },
-  { in: 16.1, full: 17.5, hold: 21.5, out: 23.1, x: 50, y: 66 },
-  { in: 25.5, full: 26.9, hold: 31.9, out: 33.5, x: 50, y: 62 },
-  { in: 37.1, full: 38.5, hold: 99, out: 99, x: 50, y: 58 },
+  // the opening beat starts BEFORE the clip does, so that at t=0 — which is
+  // what a reader sees before touching the scroll wheel — it is already all the
+  // way in rather than at the bottom of a fade
+  { in: -1.5, full: -0.4, hold: 4.0, out: 5.6, x: 50, y: 64 },
+  { in: 6.6, full: 8.0, hold: 11.2, out: 12.6, x: 50, y: 68 },
+  { in: 13.6, full: 15.0, hold: 19.0, out: 20.6, x: 50, y: 66 },
+  { in: 23.0, full: 24.4, hold: 29.4, out: 31.0, x: 50, y: 62 },
+  { in: 34.6, full: 36.0, hold: 99, out: 99, x: 50, y: 58 },
 ]
+
+/* The clip is animated on twos — 12 frames a second, the cadence of limited
+   hand animation rather than of video. The copy is quantised onto the same grid
+   so it steps with the picture: tracked copy gliding at 60fps over a picture
+   stepping at 12 would slide against the very thing it is supposed to be
+   sitting on, and reads instantly as an overlay. */
+const VIDEO_FPS = 12
 
 /* How much of the camera's real motion the copy takes on. Not 1:1, and it can't
    be: the walk is straight at the house, so a point anchored beside the door
@@ -90,7 +103,7 @@ export default function CineHero() {
   const secRef = useRef(null)
   const videoRef = useRef(null)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const sec = secRef.current
     const v = videoRef.current
     if (!sec || !v) return
@@ -146,6 +159,53 @@ export default function CineHero() {
       py: ((b.y - 50) / 100) * ((v.videoHeight || 576) / (v.videoWidth || 1024)),
     }))
 
+    /* Put every beat where it belongs for a given moment of footage. Pulled out
+       of the scroll loop so it can also be run once, synchronously, before the
+       browser's first paint — see the layout effect this all sits in. */
+    const place = (rawT) => {
+      if (!renderedW) measure()
+      const t = Math.floor(rawT * VIDEO_FPS) / VIDEO_FPS
+      const now = camAt(t)
+
+      for (let i = 0; i < beatEls.length; i++) {
+        const b = BEATS[i]
+        const el = beatEls[i]
+        const o = t < b.in || t > b.out ? 0
+          : t < b.full ? (t - b.in) / (b.full - b.in)
+          : t <= b.hold ? 1
+          : 1 - (t - b.hold) / (b.out - b.hold)
+        if (o < 0.01) {
+          el.style.opacity = 0
+          el.style.visibility = 'hidden'
+          continue
+        }
+
+        /* Where the patch of house this line was placed on has moved to.
+           `now` and the anchor are both measured from frame 0, so composing
+           one with the inverse of the other gives the camera's move over just
+           this beat's window — which is why a beat entering, holding and
+           leaving all read as the same continuous shot. */
+        const a = anchors[i]
+        const r = now.s / a.cam.s
+        const ox = now.x - r * a.cam.x
+        const oy = now.y - r * a.cam.y
+        const dx = (r * a.px + ox - a.px) * renderedW
+        const dy = (r * a.py + oy - a.py) * renderedW
+
+        el.style.opacity = o.toFixed(3)
+        el.style.visibility = 'visible'
+        el.style.transform =
+          `translate(-50%, -50%) translate(${soft(dx * TRACK_PAN, lims[i].x).toFixed(1)}px, ` +
+          `${soft(dy * TRACK_PAN, lims[i].y).toFixed(1)}px)` +
+          ` scale(${clamp(Math.pow(r, TRACK_ZOOM), ZOOM_MIN, ZOOM_MAX).toFixed(4)})`
+      }
+    }
+
+    /* The reader arrives at the top of the page with the video on its first
+       frame, so that is what the copy is placed against — before anything is
+       painted, so the opening line is simply there rather than appearing. */
+    place(0)
+
     let running = false
     const frame = () => {
       if (!running) return
@@ -173,42 +233,7 @@ export default function CineHero() {
           v.pause()
         }
 
-        const t = v.currentTime
-        if (!renderedW) measure()
-        const now = camAt(t)
-
-        for (let i = 0; i < beatEls.length; i++) {
-          const b = BEATS[i]
-          const el = beatEls[i]
-          const o = t < b.in || t > b.out ? 0
-            : t < b.full ? (t - b.in) / (b.full - b.in)
-            : t <= b.hold ? 1
-            : 1 - (t - b.hold) / (b.out - b.hold)
-          if (o < 0.01) {
-            el.style.opacity = 0
-            el.style.visibility = 'hidden'
-            continue
-          }
-
-          /* Where the patch of house this line was placed on has moved to.
-             `now` and the anchor are both measured from frame 0, so composing
-             one with the inverse of the other gives the camera's move over just
-             this beat's window — which is why a beat entering, holding and
-             leaving all read as the same continuous shot. */
-          const a = anchors[i]
-          const r = now.s / a.cam.s
-          const ox = now.x - r * a.cam.x
-          const oy = now.y - r * a.cam.y
-          const dx = (r * a.px + ox - a.px) * renderedW
-          const dy = (r * a.py + oy - a.py) * renderedW
-
-          el.style.opacity = o.toFixed(3)
-          el.style.visibility = 'visible'
-          el.style.transform =
-            `translate(-50%, -50%) translate(${soft(dx * TRACK_PAN, lims[i].x).toFixed(1)}px, ` +
-            `${soft(dy * TRACK_PAN, lims[i].y).toFixed(1)}px)` +
-            ` scale(${clamp(Math.pow(r, TRACK_ZOOM), ZOOM_MIN, ZOOM_MAX).toFixed(4)})`
-        }
+        place(v.currentTime)
       }
       requestAnimationFrame(frame)
     }
