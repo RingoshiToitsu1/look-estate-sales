@@ -53,12 +53,16 @@ const BEATS = [
   { in: 31.4, full: 32.6, hold: 99, out: 99, x: 50, y: 58 },
 ]
 
-/* The clip is animated on twos — 12 frames a second, the cadence of limited
-   hand animation rather than of video. The copy is quantised onto the same grid
-   so it steps with the picture: tracked copy gliding at 60fps over a picture
-   stepping at 12 would slide against the very thing it is supposed to be
-   sitting on, and reads instantly as an overlay. */
-const VIDEO_FPS = 12
+/* The clip runs at the source footage's own 30fps. It was on twos (12fps) for a
+   while, for the cadence of limited hand animation, and that read as choppy
+   rather than as animation — the drawing carries the animated quality on its
+   own and does not need the frame rate's help. 30 rather than 24 because 24
+   would mean dropping two frames in every five of a 30fps source, and dropping
+   frames unevenly is its own judder; matching the source converts nothing.
+
+   The copy is quantised onto the same grid so it updates on real frame
+   boundaries rather than between them. */
+const VIDEO_FPS = 30
 
 /* TEMPORARY — the copy is off the hero while the animation itself is being got
    right, so that judging the animation means judging the animation. Setting

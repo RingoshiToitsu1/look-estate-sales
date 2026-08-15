@@ -83,14 +83,16 @@ phone clip only makes the grain look deliberate. To rebuild after a re-shoot:
 START=9.0
 
 # The paint. Flatten into areas, correct the tungsten cast the rooms were shot
-# under, step the brightness, then colour.
+# under, step the brightness, then blur those steps back into gradients — the
+# posterize decides where tone changes, the blur decides how abruptly.
 FILL="bilateral=sigmaS=24:sigmaR=0.18,bilateral=sigmaS=12:sigmaR=0.10,\
 colorbalance=rm=-0.06:bm=0.08:rh=-0.03:bh=0.04,\
-lutyuv=y='clip(round(val/56)*56,24,236)',\
+lutyuv=y='clip(round(val/24)*24,24,236)',gblur=sigma=3.4,\
 colorlevels=romin=0.09:gomin=0.09:bomin=0.09,\
 eq=saturation=1.35:contrast=1.03:brightness=0.02,format=gbrp"
 
-# The ink.
+# The ink, off its own lightly-smoothed branch so the blur above never touches
+# it: soft colour, hard line.
 INK="bilateral=sigmaS=8:sigmaR=0.07,format=yuv444p,extractplanes=y+u+v[ey][eu][ev];\
 [ey]gblur=sigma=0.7,edgedetect=low=0.022:high=0.07[ly];\
 [eu]gblur=sigma=0.7,edgedetect=low=0.018:high=0.05[lu];\
@@ -98,16 +100,16 @@ INK="bilateral=sigmaS=8:sigmaR=0.07,format=yuv444p,extractplanes=y+u+v[ey][eu][e
 [ly][lu]blend=all_mode=lighten[l1];\
 [l1][lv]blend=all_mode=lighten,negate,erosion,erosion,erosion,format=gbrp[ink]"
 
-DRAW="fps=12,scale=1024:-2,hqdn3d=14:20:20:26,split[forfill][foredge];\
+DRAW="fps=30,scale=1024:-2,hqdn3d=14:20:20:26,split[forfill][foredge];\
 [forfill]${FILL}[c];\
 [foredge]${INK};\
 [c][ink]blend=all_mode=multiply:all_opacity=1.0,format=yuv420p"
 
 ffmpeg -ss $START -i media-src/hero.mp4 \
   -filter_complex "[0:v]${DRAW},split[big][small];[small]scale=640:-2[sm]" \
-  -map "[big]" -an -c:v libx264 -preset slow -crf 33 -g 12 -keyint_min 12 \
+  -map "[big]" -an -c:v libx264 -preset slow -crf 34 -g 30 -keyint_min 30 \
     -sc_threshold 0 -pix_fmt yuv420p -movflags +faststart public/media/walk.mp4 \
-  -map "[sm]" -an -c:v libx264 -preset slow -crf 34 -g 12 -keyint_min 12 \
+  -map "[sm]" -an -c:v libx264 -preset slow -crf 35 -g 30 -keyint_min 30 \
     -sc_threshold 0 -pix_fmt yuv420p -movflags +faststart public/media/walk-sm.mp4
 
 ffmpeg -i public/media/walk.mp4 -frames:v 1 -q:v 2 public/media/walk-poster.jpg
@@ -138,21 +140,51 @@ What each part is doing, and why it is in that order:
   what got the back of the sofa to come out.
 - **three `erosion` passes** — each one fattens the black lines by a pixel.
   Hairlines read as a filter; 3–4px lines read as drawn.
-- **`fps=12`** — on twos, the cadence of limited hand animation. This is what
-  makes it read as animation rather than as video with an effect on it, and it
-  is worth understanding as a deliberate choice and not a performance
-  compromise: at 24 the same frames look like slightly odd footage. `CineHero`
-  has a matching `VIDEO_FPS` that snaps the tracked copy to the same grid, so
-  the copy steps with the picture instead of gliding across it.
+- **`gblur=sigma=3.4` right after the posterize** — this pair is the whole
+  colour treatment. The posterize decides *where* tone changes; the blur decides
+  how abruptly. Alone, the posterize gives hard-edged cel steps, which read as
+  banding on a wall. Blurred back out, the same steps become soft gradients that
+  still change where a painter would have changed them. It only touches the fill
+  branch, so the lines stay hard: soft colour, hard ink.
+- **`fps=30`, matching the source** — see *Frame rate* below.
 - **`colorbalance`** — the rooms were shot under table lamps, and pushing
   saturation on a tungsten cast turns every interior into a wall of orange. It
   is a white balance, not a look; without it the staircase and the living room
   come out the same colour as the wood floor.
-- **`-g 12 -keyint_min 12 -sc_threshold 0`** — a keyframe every second. Scrolling
+- **`-g 30 -keyint_min 30 -sc_threshold 0`** — a keyframe every second. Scrolling
   back up is the one case that has to seek, and seeks land on keyframes.
 
-Flat areas and hard lines encode cheaply, and half the frames are gone, so this
-comes out well under the graded version it replaced: 3.2MB / 1.2MB.
+Smooth gradients and small frame-to-frame deltas both compress well, so this
+comes out under the graded version it replaced despite running at 30fps:
+3.1MB / 1.2MB.
+
+### Frame rate
+
+**The source is 30fps.** That is the ceiling on real motion, and it is the first
+thing to know before touching this. Encoding at 60 without doing anything else
+duplicates every frame: twice the file, identical motion, no benefit whatsoever.
+
+It has been at three different rates, and the reasoning is worth keeping:
+
+- **12fps (on twos)** — the cadence of limited hand animation, and the intuition
+  that the frame rate should carry the animated quality. It doesn't. It reads as
+  choppy, not as animated. The drawing is what makes it animation; the frame
+  rate just has to stay out of the way.
+- **24fps** — the cinematic default, and wrong here for a mechanical reason:
+  30 into 24 means discarding two frames in every five, unevenly. That judder is
+  a conversion artifact, not a look.
+- **30fps** — matches the source exactly, converts nothing, and is what ships.
+
+Genuine 60fps is possible, by synthesising the in-between frames:
+`minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1` in front
+of the draw chain. It was tried, and it is clean — no warping even on the
+fastest interior pan, because the flat painted areas give the motion estimator
+an easy time. It is not shipped for one reason, and it is not file size: the
+hero drives playback at up to 4x `playbackRate` while you scroll, so a 60fps
+clip asks the browser to decode 240 frames a second during exactly the fast
+scroll where it is most likely to start dropping them. Choppiness caused by
+dropped frames under load is worse than the smoothness gained, and it lands on
+whoever has the slowest machine. 30fps at 4x is already 120.
 
 Two things that look obviously right and are not:
 
