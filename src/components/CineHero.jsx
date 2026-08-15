@@ -1,200 +1,120 @@
 import { useEffect, useRef } from 'react'
 import { SITE } from '../data.js'
-import { BEATS, beatAt, buildScene, camAt, drawList, rgb, viewFor } from '../scene.js'
 
 /* ============================================================
-   CINEMATIC INTRO — the walk-up, rendered rather than filmed.
+   CINEMATIC INTRO — the real walkthrough, driven by scroll.
    ============================================================
-   Scroll walks a camera up the driveway, past the yard sign, onto the porch,
-   through the front door and into the living room. The scene is real geometry
-   (src/scene.js), drawn to a canvas at whatever scroll position you're at — so
-   unlike a still sequence there is nothing to blend between and nothing to go
-   soft. The reference walkthrough it recreates is media-src/hero.mp4.
+   This is the actual footage (graded, public/media/walk.mp4), not a rendering
+   of it. Scroll decides where in the walk you are; the video decodes at its own
+   framerate to get there.
 
-   The text beats are anchored to points in the same world and pushed through
-   the same projector, so they sit IN the scene: they slide, grow and fall away
-   with the camera rather than being pasted on the front.
+   Why it isn't soft any more. The first version exploded the clip into stills
+   and cross-faded between them, so every scroll position BETWEEN two stills was
+   a blend of both — that blend WAS the blur, and no amount of quality in the
+   stills would have fixed it. This one keeps the real footage and avoids the
+   blur a different way: never blend, and never scrub frame by frame. Scroll
+   sets a target time and the video is PLAYED toward it — faster when you scroll
+   fast, slower as you ease off, paused when you stop. Every frame on screen is
+   a real decoded frame.
 
-   This file owns the browser end of it — the canvas, the sign artwork, the
-   scroll loop. The maths lives in src/scene.js and can be rendered headlessly
-   with `node scripts/preview-scene.mjs`.
+   Seeking is left for the two cases playback can't cover: scrolling back up
+   (video only runs forwards) and jumps too big to catch. The clip is encoded
+   with a keyframe every second so those land quickly.
    ============================================================ */
+
+/* Beats are pinned to moments in the FOOTAGE rather than to scroll positions,
+   so a line stays with the thing it describes even if the section's height
+   changes. Times are seconds into the walk; x/y place the copy as a percentage
+   of the frame; drift is how far it slides across its own window, which is what
+   makes it feel carried along by the camera instead of pasted on the glass. */
+const BEATS = [
+  { in: 0.0, full: 0.6, hold: 4.6, out: 6.0, x: 50, y: 64, drift: [0, -26] },
+  { in: 8.6, full: 10.0, hold: 14.0, out: 15.6, x: 50, y: 68, drift: [0, -22] },
+  { in: 17.6, full: 19.0, hold: 23.0, out: 24.6, x: 50, y: 66, drift: [-22, -14] },
+  { in: 27.0, full: 28.4, hold: 33.4, out: 35.0, x: 50, y: 62, drift: [0, -20] },
+  { in: 38.6, full: 40.0, hold: 99, out: 99, x: 50, y: 58, drift: [0, -14] },
+]
+
+const clamp = (v, a = 0, b = 1) => (v < a ? a : v > b ? b : v)
 
 export default function CineHero() {
   const secRef = useRef(null)
-  const canvasRef = useRef(null)
+  const videoRef = useRef(null)
 
   useEffect(() => {
     const sec = secRef.current
-    const cvs = canvasRef.current
-    if (!sec || !cvs || !cvs.getContext) return
-    const ctx = cvs.getContext('2d')
+    const v = videoRef.current
+    if (!sec || !v) return
     const beatEls = Array.from(sec.querySelectorAll('[data-beat]'))
     sec.classList.add('cine--on')
 
-    let dirty = true
+    /* A phone gets the 640-wide cut: a third of the weight, into a frame a
+       third of the size. */
+    v.src = window.innerWidth < 760 ? './media/walk-sm.mp4' : './media/walk.mp4'
+    v.load()
 
-    /* ---- the sign artwork, painted into an offscreen canvas ----
-       The board is parallel to the screen, so its projection is always an
-       upright rectangle and the artwork can be blitted straight in.
+    let duration = 0
+    const onMeta = () => { duration = v.duration || 0 }
+    v.addEventListener('loadedmetadata', onMeta)
 
-       The mark itself is the real logo (public/media/logo.png — the business's
-       own artwork, recoloured from the white version to the sign's red and
-       blue), not a redrawing of it, so the first thing you see up the driveway
-       is exactly the logo and not an approximation. */
-    const signTex = document.createElement('canvas')
-    signTex.width = 460
-    signTex.height = 320
-    const logo = new Image()
-    const drawSign = () => {
-      const c = signTex.getContext('2d')
-      const W = signTex.width, H = signTex.height
-      c.clearRect(0, 0, W, H)
-      c.fillStyle = '#f4e6cd'
-      c.fillRect(0, 0, W, H)
-      c.strokeStyle = '#0d2a55'
-      c.lineWidth = 5
-      c.strokeRect(4, 4, W - 8, H - 8)
-
-      if (logo.complete && logo.naturalWidth) {
-        const lw = W - 60
-        c.drawImage(logo, 30, 44, lw, (lw * logo.naturalHeight) / logo.naturalWidth)
-      }
-
-      c.fillStyle = '#c20e1f'
-      c.fillRect(28, 224, W - 56, 60)
-      c.fillStyle = '#fff'
-      c.font = 'bold 34px "Hanken Grotesk", system-ui, sans-serif'
-      c.textAlign = 'center'
-      c.textBaseline = 'middle'
-      c.fillText(SITE.phone, W / 2, 255)
-    }
-    logo.onload = () => { drawSign(); dirty = true }
-    logo.src = './media/logo.png'
-    drawSign()
-    // the phone number is painted before the webfont lands; repaint when it does
-    if (document.fonts?.ready) document.fonts.ready.then(() => { drawSign(); dirty = true })
-
-    /* ---- the branded table cover on the checkout table ----
-       Straight out of the reference clip's closing shot: a fitted navy cover
-       with the logo across the front. Same artwork, on-navy colourway. */
-    const coverTex = document.createElement('canvas')
-    coverTex.width = 616
-    coverTex.height = 200
-    const coverLogo = new Image()
-    const drawCover = () => {
-      const c = coverTex.getContext('2d')
-      c.fillStyle = '#08234e'
-      c.fillRect(0, 0, coverTex.width, coverTex.height)
-      if (coverLogo.complete && coverLogo.naturalWidth) {
-        const lw = coverTex.width * 0.78
-        const lh = (lw * coverLogo.naturalHeight) / coverLogo.naturalWidth
-        c.drawImage(coverLogo, (coverTex.width - lw) / 2, (coverTex.height - lh) / 2, lw, lh)
-      }
-    }
-    coverLogo.onload = () => { drawCover(); dirty = true }
-    coverLogo.src = './media/logo-onnavy.png'
-    drawCover()
-
-    const faces = buildScene({ sign: signTex, cover: coverTex })
-
-    /* ---- canvas ---- */
-    let view = viewFor(window.innerWidth, window.innerHeight, 1)
-    const size = () => {
-      const r = cvs.getBoundingClientRect()
-      view = viewFor(r.width || window.innerWidth, r.height || window.innerHeight, Math.min(window.devicePixelRatio || 1, 2))
-      cvs.width = view.W
-      cvs.height = view.H
-      dirty = true
-    }
-
-    const render = (p) => {
-      const cam = camAt(p)
-      const { items, sky, fog } = drawList(faces, cam, view)
-      const { W, H, cx, cy } = view
-
-      const g = ctx.createLinearGradient(0, 0, 0, H)
-      g.addColorStop(0, rgb(sky))
-      g.addColorStop(1, rgb(fog))
-      ctx.fillStyle = g
-      ctx.fillRect(0, 0, W, H)
-
-      for (const it of items) {
-        ctx.beginPath()
-        ctx.moveTo(it.scr[0][0], it.scr[0][1])
-        for (let i = 1; i < it.scr.length; i++) ctx.lineTo(it.scr[i][0], it.scr[i][1])
-        ctx.closePath()
-        ctx.fillStyle = rgb(it.col)
-        ctx.fill()
-
-        if (it.tex) {
-          const [x0, y0, x1, y1] = it.box
-          ctx.save()
-          ctx.clip()
-          ctx.drawImage(it.tex, x0, y0, x1 - x0, y1 - y0)
-          ctx.restore()
-        }
-        if (it.glow) {
-          const [x0, y0, x1, y1] = it.box
-          const mx = (x0 + x1) / 2, my = (y0 + y1) / 2
-          const r = Math.max(x1 - x0, y1 - y0) * 1.35
-          const rg = ctx.createRadialGradient(mx, my, 0, mx, my, r)
-          rg.addColorStop(0, `rgba(236,190,132,${0.34 * it.glow})`)
-          rg.addColorStop(1, 'rgba(236,190,132,0)')
-          ctx.globalCompositeOperation = 'lighter'
-          ctx.fillStyle = rg
-          ctx.fillRect(mx - r, my - r, r * 2, r * 2)
-          ctx.globalCompositeOperation = 'source-over'
-        }
-      }
-
-      /* vignette — pushes the eye down the driveway */
-      const v = ctx.createRadialGradient(cx, cy, Math.min(W, H) * 0.34, cx, cy, Math.max(W, H) * 0.78)
-      v.addColorStop(0, 'rgba(0,0,0,0)')
-      v.addColorStop(1, 'rgba(2,8,20,0.55)')
-      ctx.fillStyle = v
-      ctx.fillRect(0, 0, W, H)
-
-      /* ---- the beats, tracked to their anchors in the scene ---- */
-      for (let i = 0; i < beatEls.length; i++) {
-        const el = beatEls[i]
-        const b = beatAt(i, cam, view)
-        if (!b || b.opacity < 0.01) {
-          el.style.opacity = 0
-          el.style.visibility = 'hidden'
-          continue
-        }
-
-        el.style.opacity = b.opacity.toFixed(3)
-        el.style.visibility = 'visible'
-        el.style.transform =
-          `translate(-50%, -50%) translate(${b.x.toFixed(1)}px, ${b.y.toFixed(1)}px) scale(${b.scale.toFixed(3)})`
-      }
-    }
-
-    /* ---- scroll loop ---- */
-    let lastP = -1, running = false
+    let running = false
     const frame = () => {
       if (!running) return
       const span = sec.offsetHeight - window.innerHeight
-      const p = span > 0 ? Math.min(1, Math.max(0, -sec.getBoundingClientRect().top / span)) : 0
-      if (dirty || Math.abs(p - lastP) > 0.00012) {
-        render(p)
-        lastP = p
-        dirty = false
+      const p = span > 0 ? clamp(-sec.getBoundingClientRect().top / span) : 0
+
+      if (duration) {
+        const target = p * (duration - 0.08)
+        const diff = target - v.currentTime
+
+        if (diff > 0.9) {
+          // too far ahead to play into — jump, then carry on playing
+          v.currentTime = target
+        } else if (diff > 0.04) {
+          /* The normal case, and the whole trick: play toward the target at a
+             rate set by how far behind we are. Real decoded frames, at whatever
+             speed the reader happens to be scrolling. */
+          v.playbackRate = clamp(diff * 4.5, 0.35, 4)
+          if (v.paused) v.play().catch(() => {})
+        } else if (diff < -0.09) {
+          // scrolling back up: the one place a seek is unavoidable
+          if (!v.paused) v.pause()
+          v.currentTime = target
+        } else if (!v.paused) {
+          v.pause()
+        }
+
+        const t = v.currentTime
+        for (let i = 0; i < beatEls.length; i++) {
+          const b = BEATS[i]
+          const el = beatEls[i]
+          const o = t < b.in || t > b.out ? 0
+            : t < b.full ? (t - b.in) / (b.full - b.in)
+            : t <= b.hold ? 1
+            : 1 - (t - b.hold) / (b.out - b.hold)
+          if (o < 0.01) {
+            el.style.opacity = 0
+            el.style.visibility = 'hidden'
+            continue
+          }
+          const k = clamp((t - b.in) / (Math.min(b.out, b.hold + 1.6) - b.in))
+          el.style.opacity = o.toFixed(3)
+          el.style.visibility = 'visible'
+          el.style.left = `${b.x}%`
+          el.style.top = `${b.y}%`
+          el.style.transform =
+            `translate(-50%, -50%) translate(${(b.drift[0] * k).toFixed(1)}px, ${(b.drift[1] * k).toFixed(1)}px)` +
+            ` scale(${(0.985 + 0.03 * k).toFixed(4)})`
+        }
       }
       requestAnimationFrame(frame)
     }
 
-    size()
-    window.addEventListener('resize', size)
-    window.addEventListener('orientationchange', size)
-
-    /* Only burn frames while the stage is on screen. */
+    // only run while the stage is on screen, and let the video go when it isn't
     const io = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
         if (e.isIntersecting && !running) { running = true; requestAnimationFrame(frame) }
-        else if (!e.isIntersecting) { running = false }
+        else if (!e.isIntersecting) { running = false; v.pause() }
       })
     }, { rootMargin: '15% 0px' })
     io.observe(sec)
@@ -202,15 +122,24 @@ export default function CineHero() {
     return () => {
       running = false
       io.disconnect()
-      window.removeEventListener('resize', size)
-      window.removeEventListener('orientationchange', size)
+      v.removeEventListener('loadedmetadata', onMeta)
+      v.pause()
     }
   }, [])
 
   return (
     <section className="cine" id="top" ref={secRef}>
       <div className="cine__stage">
-        <canvas className="cine__canvas" ref={canvasRef} aria-hidden="true" />
+        <video
+          className="cine__video"
+          ref={videoRef}
+          muted
+          playsInline
+          preload="auto"
+          poster="./media/walk-poster.jpg"
+          aria-hidden="true"
+        />
+        <div className="cine__scrim" aria-hidden="true" />
 
         <div className="cine__beats">
           <div className="cine__beat" data-beat="0">
@@ -245,7 +174,6 @@ export default function CineHero() {
               A professional approach to <b>maximizing the value</b> of our
               clients&rsquo; estate.
             </p>
-            <p className="cine__note">And we hand back an empty house.</p>
             <div className="cine__actions">
               <a className="btn btn--primary" href={SITE.consult} target="_blank" rel="noreferrer">
                 Book a free consultation

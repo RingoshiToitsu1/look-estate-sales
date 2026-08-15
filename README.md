@@ -6,13 +6,12 @@ house. Built with Vite + React + Framer Motion.
 
 ## What's inside
 
-- **The walk-up** (`src/scene.js` + `src/components/CineHero.jsx`). Scrolling
-  walks a camera up the driveway, past the yard sign, onto the porch, through
-  the front door and into the living room — drawn as real geometry through a
-  small perspective projector, so every scroll position is rendered exactly and
-  nothing goes soft. Five text beats are pinned to points in that scene and
-  pushed through the same projector, so they slide, grow and fall away with the
-  camera instead of sitting on top of it. See *The scene* below.
+- **The walk-up** (`src/components/CineHero.jsx`). Scrolling walks you up the
+  driveway, past the banner, onto the porch, through the front door and into the
+  house — in the real footage, graded. Scroll sets a target time and the video is
+  *played* toward it rather than scrubbed frame by frame, so every frame on
+  screen is a real decoded frame. Five text beats are pinned to moments in the
+  footage and drift with the shot. See *The walkthrough* below.
 - **Scroll-reveal animations** through the rest of the page (fade + rise,
   staggered), with a count-up on the key stats. Motion respects
   `prefers-reduced-motion`.
@@ -58,46 +57,45 @@ Add your domain in **Settings → Pages → Custom domain** and create a
 
 - **Contact details / nav** — `src/data.js`
 - **Copy and sections** — `src/components/Sections.jsx`, `CineHero.jsx`, `Footer.jsx`
-- **The scroll beats** — copy lives in `CineHero.jsx`, placement in the `BEATS`
-  array in `src/scene.js`. Each entry is a world point `[x, y, z]` plus the
-  distance at which it renders full size, so moving a beat's `z` moves where
-  along the walk it appears; `beatAt()` derives its fade and scale from there.
+- **The scroll beats** — the `BEATS` array at the top of `CineHero.jsx`. Each
+  entry is a window in SECONDS of footage (`in`/`full`/`hold`/`out`) plus where
+  the copy sits as a percentage of the frame, so a line stays with the shot it
+  describes however tall the section is.
 - **Colors, fonts, spacing** — CSS variables at the top of `src/styles/index.css`
 
-## The scene
+## The walkthrough
 
-`src/scene.js` is pure geometry and maths — no DOM. It builds the world once in
-metres (+z away from the viewer, y up, eye height 1.55), moves a camera along
-it, and hands back the polygons to paint. `CineHero.jsx` owns the browser half:
-the canvas, the yard-sign artwork and the scroll loop.
-
-Because the scene has no DOM in it, it can be rendered without a browser:
+`media-src/hero.mp4` is the original phone clip; `public/media/walk.mp4` is the
+graded re-encode the page plays, with `walk-sm.mp4` for phones (picked at
+runtime by viewport width) and `walk-poster.jpg` for first paint. To rebuild
+them after a re-shoot:
 
 ```bash
-node scripts/preview-scene.mjs out.svg     # eight camera positions, contact sheet
+GRADE="hqdn3d=4:3:6:6,eq=contrast=1.14:saturation=0.92:gamma=0.97,\
+colorbalance=rs=-0.05:bs=0.10:rm=0.02:bm=-0.02:rh=0.07:bh=-0.06,\
+unsharp=5:5:0.5,vignette=PI/5"
+
+ffmpeg -i media-src/hero.mp4 -vf "$GRADE,fps=24,scale=1024:-2" -an \
+  -c:v libx264 -preset slow -crf 31 -g 24 -keyint_min 24 -sc_threshold 0 \
+  -pix_fmt yuv420p -movflags +faststart public/media/walk.mp4
 ```
 
-Open the SVG to check composition after moving anything. The blue circles mark
-where each text beat's anchor lands, with its perspective scale.
+Three parts of that carry their weight:
 
-Two gotchas worth knowing before editing the scene:
+- **hqdn3d** — handheld phone footage is full of sensor noise, which is
+  expensive to encode and compresses into mush. Denoising first is what takes
+  the file from 23MB to 6MB at the same apparent quality.
+- **`-g 24 -keyint_min 24 -sc_threshold 0`** — a keyframe every second. Scrolling
+  back up is the one case that has to seek, and seeks land on keyframes.
+- **the vignette and colour balance** — cool shadows, warm highlights. It is
+  what makes a phone walkthrough read as deliberate.
 
-- Faces are painter-sorted by one depth each, so **large surfaces are cut into
-  strips** (`stripSlab`) and **anything lying on a floor is cut out of it**
-  (`floorAround`) rather than laid on top. Overlapping coplanar surfaces have no
-  stable order.
-- The camera stops at `CAM_END`, roughly eight metres from the back wall, and
-  only sees about ±0.86 × distance sideways — so furniture meant to be visible
-  in the final frame has to sit deeper in the room than a floor plan suggests.
+Beat timings are seconds into the clip, so re-cutting the footage means moving
+those numbers. Check one by pulling the frame it lands on:
 
-Two textures are painted in the browser and blitted onto faces that sit square
-to the camera (`CineHero.jsx`): the yard sign at the top of the driveway, and
-the branded cover on the checkout table inside. Both use the business's own
-logo — `public/media/logo.png` for the white board and `logo-onnavy.png` for the
-table cover — recoloured from the site's white PNG, not redrawn.
-
-`media-src/hero.mp4` is the reference walkthrough the scene recreates. It lives
-outside `public/`, so it stays in the repo but is never shipped to the browser.
+```bash
+ffmpeg -ss 19 -i public/media/walk.mp4 -frames:v 1 beat2.jpg
+```
 
 ## A note on images
 
