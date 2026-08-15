@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="10" fill="#12291F"/>
+  <g transform="rotate(-18 32 32)">
+    <path d="M20 22h16l10 10-14 14-16-16V22z" fill="none" stroke="#C6A15B" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="27" cy="29" r="3.4" fill="#C6A15B"/>
+  </g>
+  <text x="32" y="52" font-family="Georgia, serif" font-size="12" fill="#F4EFE4" text-anchor="middle" font-style="italic">Look</text>
+</svg>

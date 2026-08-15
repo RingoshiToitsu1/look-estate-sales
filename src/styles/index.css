@@ -1,0 +1,150 @@
+/* ============================================================
+   LOOK ESTATE SALES — Design System
+   Heritage / auction-house direction:
+   deep pine + antique brass, editorial serif + humanist sans,
+   a recurring price-tag motif (estate sales tag & price everything).
+   ============================================================ */
+
+:root {
+  /* Palette */
+  --pine:        #12291F;   /* deep pine — dark surfaces / hero */
+  --pine-2:      #1C3A2B;   /* raised pine */
+  --pine-3:      #0C1D15;   /* deepest pine — footer */
+  --brass:       #C6A15B;   /* antique brass accent */
+  --brass-deep:  #A67F3A;
+  --bone:        #F4EFE4;   /* warm paper background */
+  --bone-2:      #EBE3D2;   /* secondary paper */
+  --ink:         #1A1E1A;   /* near-black text on light */
+  --ink-soft:    #4A5148;   /* muted body text on light */
+  --sage:        #7E8B76;   /* muted sage */
+  --paper-line:  rgba(26, 30, 26, 0.14);
+  --dark-line:   rgba(244, 239, 228, 0.16);
+
+  /* Type */
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-body: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* Rhythm */
+  --page-max: 1240px;
+  --gutter: clamp(1.25rem, 5vw, 4rem);
+  --section-y: clamp(4.5rem, 10vw, 8.5rem);
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bone);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: clamp(1rem, 0.96rem + 0.2vw, 1.075rem);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -0.012em;
+  margin: 0;
+  font-optical-sizing: auto;
+}
+
+p { margin: 0; }
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; display: block; }
+
+:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* ---------- Layout helpers ---------- */
+.wrap {
+  width: 100%;
+  max-width: var(--page-max);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.section { padding-block: var(--section-y); }
+
+/* ---------- Tag motif (signature) ----------
+   A small punched price-tag chip used for eyebrows and data.  */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brass-deep);
+  padding: 0.38rem 0.7rem 0.38rem 1.15rem;
+  position: relative;
+  background: transparent;
+  border: 1px solid var(--brass);
+  border-radius: 3px 5px 5px 3px;
+  clip-path: polygon(0.55rem 0, 100% 0, 100% 100%, 0.55rem 100%, 0 50%);
+}
+.tag::before {
+  /* the punched hole in the tag */
+  content: "";
+  position: absolute;
+  left: 0.58rem; top: 50%;
+  width: 5px; height: 5px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: currentColor;
+}
+.tag--onDark { color: var(--brass); border-color: rgba(198, 161, 91, 0.55); }
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  padding: 0.9rem 1.5rem;
+  border-radius: 2px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.25s ease, background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+  white-space: nowrap;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: translateY(0); }
+
+.btn--brass { background: var(--brass); color: var(--pine-3); }
+.btn--brass:hover { background: #d4b06a; }
+
+.btn--ghost { background: transparent; color: var(--ink); border-color: var(--paper-line); }
+.btn--ghost:hover { border-color: var(--ink); }
+
+.btn--ghostDark { background: transparent; color: var(--bone); border-color: var(--dark-line); }
+.btn--ghostDark:hover { border-color: var(--brass); color: var(--brass); }
+
+.btn__arrow { transition: transform 0.25s ease; }
+.btn:hover .btn__arrow { transform: translate(3px, -3px); }
+
+/* ---------- Section eyebrow heading block ---------- */
+.lede { max-width: 46ch; }
+.eyebrow-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+
+.serif-italic { font-style: italic; color: var(--brass-deep); }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
