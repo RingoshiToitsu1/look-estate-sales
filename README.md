@@ -1,16 +1,18 @@
 # Look Estate Sales — website
 
-A single-page React site with a scroll-reveal, video-led landing page for
-Look Estate Sales (personal property liquidation, Oakland Township, MI).
-Built with Vite + React + Framer Motion.
+A single-page React site for Look Estate Sales (personal property
+liquidation, Oakland Township, MI), fronted by a scroll-driven walk up to the
+house. Built with Vite + React + Framer Motion.
 
 ## What's inside
 
-- **Scroll-scrubbed walkthrough** (`src/components/CineHero.jsx`). The
-  walkthrough video is exploded into a still sequence and drawn to a canvas at
-  whatever rate you scroll, with each frame cross-faded into the next so it
-  reads as film rather than a slideshow. Four text beats fade in and out over
-  the top as you go. See *Rebuilding the frames* below.
+- **The walk-up** (`src/scene.js` + `src/components/CineHero.jsx`). Scrolling
+  walks a camera up the driveway, past the yard sign, onto the porch, through
+  the front door and into the living room — drawn as real geometry through a
+  small perspective projector, so every scroll position is rendered exactly and
+  nothing goes soft. Five text beats are pinned to points in that scene and
+  pushed through the same projector, so they slide, grow and fall away with the
+  camera instead of sitting on top of it. See *The scene* below.
 - **Scroll-reveal animations** through the rest of the page (fade + rise,
   staggered), with a count-up on the key stats. Motion respects
   `prefers-reduced-motion`.
@@ -56,23 +58,40 @@ Add your domain in **Settings → Pages → Custom domain** and create a
 
 - **Contact details / nav** — `src/data.js`
 - **Copy and sections** — `src/components/Sections.jsx`, `CineHero.jsx`, `Footer.jsx`
-- **The scroll beats** — the `BEATS` array and the markup in `CineHero.jsx`.
-  Each beat owns a window of scroll progress (fade in, hold, fade out), so
-  moving a number moves where that line appears in the walkthrough.
+- **The scroll beats** — copy lives in `CineHero.jsx`, placement in the `BEATS`
+  array in `src/scene.js`. Each entry is a world point `[x, y, z]` plus the
+  distance at which it renders full size, so moving a beat's `z` moves where
+  along the walk it appears; `beatAt()` derives its fade and scale from there.
 - **Colors, fonts, spacing** — CSS variables at the top of `src/styles/index.css`
 
-## Rebuilding the frames
+## The scene
 
-The source clip lives at `media-src/hero.mp4` — outside `public/`, so it is
-kept in the repo but never shipped to the browser. To regenerate the sequence
-(after replacing the clip, or to trade quality against weight):
+`src/scene.js` is pure geometry and maths — no DOM. It builds the world once in
+metres (+z away from the viewer, y up, eye height 1.55), moves a camera along
+it, and hands back the polygons to paint. `CineHero.jsx` owns the browser half:
+the canvas, the yard-sign artwork and the scroll loop.
+
+Because the scene has no DOM in it, it can be rendered without a browser:
 
 ```bash
-./scripts/frames.sh              # needs ffmpeg on PATH
+node scripts/preview-scene.mjs out.svg     # eight camera positions, contact sheet
 ```
 
-It writes `public/media/frames/f001.webp …`, prints the frame count, and the
-count must match `FRAME_COUNT` in `src/components/CineHero.jsx`.
+Open the SVG to check composition after moving anything. The blue circles mark
+where each text beat's anchor lands, with its perspective scale.
+
+Two gotchas worth knowing before editing the scene:
+
+- Faces are painter-sorted by one depth each, so **large surfaces are cut into
+  strips** (`stripSlab`) and **anything lying on a floor is cut out of it**
+  (`floorAround`) rather than laid on top. Overlapping coplanar surfaces have no
+  stable order.
+- The camera stops at `CAM_END`, roughly eight metres from the back wall, and
+  only sees about ±0.86 × distance sideways — so furniture meant to be visible
+  in the final frame has to sit deeper in the room than a floor plan suggests.
+
+`media-src/hero.mp4` is the reference walkthrough the scene recreates. It lives
+outside `public/`, so it stays in the repo but is never shipped to the browser.
 
 ## A note on images
 

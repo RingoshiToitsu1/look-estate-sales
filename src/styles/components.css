@@ -124,10 +124,16 @@
 .nav__drawer-phone { font-family: var(--font-mono) !important; font-size: 0.9rem !important; color: var(--blue-lite) !important; }
 
 /* ---------------- CINEMATIC INTRO ----------------
-   The walkthrough, scrubbed by scroll. See CineHero.jsx.
-   Base rules below are the no-JS fallback: one normal screen with the copy
-   stacked over a navy field. CineHero adds .cine--on, which is what turns
-   the section into a tall sticky stage. */
+   The walk-up the house, rendered to canvas and driven by scroll. See
+   CineHero.jsx. Base rules below are the no-JS fallback: one normal screen
+   with the copy stacked over a navy field. CineHero adds .cine--on, which is
+   what turns the section into a tall sticky stage.
+
+   In .cine--on the beats are positioned entirely from JS: each one is pinned
+   to a point in the 3D scene, and its transform is rewritten every frame with
+   that point's projected position and perspective scale. Hence left/top of 0
+   and a fixed width — anything the browser would reflow (a % width, a max-
+   width in ch) would fight the scale and jitter as the camera moves. */
 .cine {
   position: relative;
   background: var(--navy-3);
@@ -141,15 +147,6 @@
   overflow: hidden;
 }
 .cine__canvas { display: none; }
-.cine__scrim {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, rgba(5,25,58,0.62) 0%, rgba(5,25,58,0.22) 34%, rgba(5,25,58,0.58) 74%, rgba(5,25,58,0.94) 100%),
-    linear-gradient(90deg, rgba(5,25,58,0.68) 0%, rgba(5,25,58,0.06) 62%);
-}
 .cine__beats {
   position: relative;
   z-index: 2;
@@ -162,7 +159,8 @@
 /* Fallback only shows the opening and the call to action — the middle beats
    are transitions, and stacked they'd just read as repetition. */
 .cine:not(.cine--on) .cine__beat[data-beat='1'],
-.cine:not(.cine--on) .cine__beat[data-beat='2'] { display: none; }
+.cine:not(.cine--on) .cine__beat[data-beat='2'],
+.cine:not(.cine--on) .cine__beat[data-beat='3'] { display: none; }
 
 /* ---- the scroll stage ---- */
 .cine--on { height: 560vh; }
@@ -181,17 +179,22 @@
   height: 100%;
   z-index: 0;
 }
-.cine--on .cine__beats { position: absolute; inset: 0; padding: 0; max-width: none; }
+.cine--on .cine__beats { position: absolute; inset: 0; padding: 0; max-width: none; overflow: hidden; }
 .cine--on .cine__beat {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: min(100%, var(--page-max));
-  padding-inline: var(--gutter);
-  will-change: opacity, filter, transform;
+  left: 0;
+  top: 0;
+  width: min(86vw, 34rem);
+  text-align: center;
+  text-wrap: balance;
+  pointer-events: none;
+  will-change: opacity, transform;
 }
 .cine--on .cine__beat + .cine__beat { margin-top: 0; }
+.cine--on .cine__title,
+.cine--on .cine__sub,
+.cine--on .cine__lead { max-width: none; margin-inline: auto; }
+.cine--on .cine__actions { justify-content: center; pointer-events: auto; }
 
 /* ---- beat typography ---- */
 .cine__beat > * + * { margin-top: 1.4rem; }
