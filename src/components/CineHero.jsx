@@ -72,9 +72,8 @@ export default function CineHero() {
     logo.onload = () => { drawSign(); dirty = true }
     logo.src = './media/logo.png'
     drawSign()
-    /* The phone number is painted before the webfont lands, and the webfont
-       also changes the beat boxes — so repaint the board and re-measure. */
-    if (document.fonts?.ready) document.fonts.ready.then(() => { drawSign(); size() })
+    // the phone number is painted before the webfont lands; repaint when it does
+    if (document.fonts?.ready) document.fonts.ready.then(() => { drawSign(); dirty = true })
 
     /* ---- the branded table cover on the checkout table ----
        Straight out of the reference clip's closing shot: a fitted navy cover
@@ -101,16 +100,11 @@ export default function CineHero() {
 
     /* ---- canvas ---- */
     let view = viewFor(window.innerWidth, window.innerHeight, 1)
-    /* Unscaled beat sizes, measured once per layout: the shade pool under each
-       beat needs its box, and reading it every frame would mean a forced layout
-       on every frame. The transform scale is applied to these numbers instead. */
-    let sizes = []
     const size = () => {
       const r = cvs.getBoundingClientRect()
       view = viewFor(r.width || window.innerWidth, r.height || window.innerHeight, Math.min(window.devicePixelRatio || 1, 2))
       cvs.width = view.W
       cvs.height = view.H
-      sizes = beatEls.map((el) => [el.offsetWidth, el.offsetHeight])
       dirty = true
     }
 
@@ -169,30 +163,6 @@ export default function CineHero() {
           el.style.opacity = 0
           el.style.visibility = 'hidden'
           continue
-        }
-
-        /* A pool of shade under the copy, painted into the scene at the beat's
-           own position and size. Text shadows alone can't carry white type over
-           a lit facade or a lamp-lit wall; this can, and because it scales and
-           fades with the beat it stays part of the shot rather than reading as
-           a panel pasted over it. */
-        const [bw, bh] = sizes[i] || [0, 0]
-        if (bw) {
-          const rx = bw * b.scale * 0.82 * view.dpr
-          const ry = bh * b.scale * 1.15 * view.dpr
-          ctx.save()
-          ctx.globalAlpha = b.opacity
-          ctx.translate(b.x * view.dpr, b.y * view.dpr)
-          ctx.scale(rx, ry)
-          const hg = ctx.createRadialGradient(0, 0, 0, 0, 0, 1)
-          hg.addColorStop(0, 'rgba(3,11,26,0.82)')
-          hg.addColorStop(0.45, 'rgba(3,11,26,0.62)')
-          hg.addColorStop(1, 'rgba(3,11,26,0)')
-          ctx.fillStyle = hg
-          ctx.beginPath()
-          ctx.arc(0, 0, 1, 0, 6.2832)
-          ctx.fill()
-          ctx.restore()
         }
 
         el.style.opacity = b.opacity.toFixed(3)

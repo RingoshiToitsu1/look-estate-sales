@@ -44,14 +44,16 @@ export const rgb = (c) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`
 /* Text beats. Each is pinned to a world point; `d0` is the distance at which
    it renders at its natural size, so it grows as the camera closes in. */
 export const BEATS = [
-  { at: [1.5, 2.95, 6], d0: 11 },
+  { at: [2.35, 3.0, 6], d0: 11 },
   { at: [0.3, 2.5, 16.5], d0: 8 },
   { at: [0, 3.25, 25.2], d0: 7.5 },
   { at: [0, 1.95, 36], d0: 7 },
   { at: [0, 1.65, 50], d0: 6 },
 ]
 
-export const SIGN = { x: -2.75, z: 5.4, halfW: 1.15, y0: 0.95, y1: 2.55 }
+/* Set back a little further than a real yard sign would be: the extra metre
+   is what keeps the whole board — mark included — inside a phone's frame. */
+export const SIGN = { x: -3.3, z: 6.8, halfW: 1.15, y0: 0.95, y1: 2.55 }
 
 /* ============================================================
    Scene
@@ -368,7 +370,11 @@ export function camAt(prog) {
   const z = lerp(CAM_START, CAM_END, prog)
   /* A walked line, not a rail: a slight arc that straightens out as the porch
      comes up, plus a shallow bob, and a step up over the threshold. */
-  const x = Math.sin(prog * Math.PI) * 0.5 * (1 - clamp((z - 20) / 8))
+  /* Starting a step to the left of the driveway's centre keeps the yard sign
+     inside the frame on a narrow phone, where the horizontal field is less than
+     half a desktop's; the step closes over the first stretch of the walk. Both
+     sign and opening copy shift with it, so the gap between them is unchanged. */
+  const x = Math.sin(prog * Math.PI) * 0.5 * (1 - clamp((z - 20) / 8)) - 0.45 * (1 - clamp(prog / 0.18))
   const y = EYE + Math.sin(z * 1.05) * 0.022 + clamp((z - DOOR_Z) / 1.2) * 0.44
   return { x, y, z }
 }
