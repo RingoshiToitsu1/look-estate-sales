@@ -1,5 +1,5 @@
 import Nav from './components/Nav.jsx'
-import Hero from './components/Hero.jsx'
+import CineHero from './components/CineHero.jsx'
 import Footer from './components/Footer.jsx'
 import { Intro, Stats, Services, Auctions, Process, Reviews, Articles } from './components/Sections.jsx'
 import './styles/components.css'
@@ -9,7 +9,7 @@ export default function App() {
     <>
       <Nav />
       <main>
-        <Hero />
+        <CineHero />
         <Intro />
         <Stats />
         <Services />

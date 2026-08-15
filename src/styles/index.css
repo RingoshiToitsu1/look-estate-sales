@@ -1,24 +1,33 @@
 /* ============================================================
    LOOK ESTATE SALES — Design System
-   Heritage / auction-house direction:
-   deep pine + antique brass, editorial serif + humanist sans,
-   a recurring price-tag motif (estate sales tag & price everything).
+   Brand direction: the yard sign — navy, white and flag red, with the
+   site's own link blue for actions, an editorial serif, and a recurring
+   price-tag motif (estate sales tag & price everything).
+
+   Where the colours come from:
+     #046BD2 / #045CB4 / #111111 / #334155 / #1E293B / #D1D5DB / #F0F5FA
+       — lookestatesales.com's own Astra globals (--ast-global-color-0..7)
+     #C20E1F / #08234E
+       — sampled off the LOOK yard sign: the red arrow and the navy type
    ============================================================ */
 
 :root {
   /* Palette */
-  --pine:        #12291F;   /* deep pine — dark surfaces / hero */
-  --pine-2:      #1C3A2B;   /* raised pine */
-  --pine-3:      #0C1D15;   /* deepest pine — footer */
-  --brass:       #C6A15B;   /* antique brass accent */
-  --brass-deep:  #A67F3A;
-  --bone:        #F4EFE4;   /* warm paper background */
-  --bone-2:      #EBE3D2;   /* secondary paper */
-  --ink:         #1A1E1A;   /* near-black text on light */
-  --ink-soft:    #4A5148;   /* muted body text on light */
-  --sage:        #7E8B76;   /* muted sage */
-  --paper-line:  rgba(26, 30, 26, 0.14);
-  --dark-line:   rgba(244, 239, 228, 0.16);
+  --navy:        #08234E;   /* sign navy — dark surfaces */
+  --navy-2:      #0E3169;   /* raised navy */
+  --navy-3:      #05193A;   /* deepest navy — footer */
+  --blue:        #046BD2;   /* brand blue — primary actions on light */
+  --blue-deep:   #045CB4;   /* pressed state, small text on light */
+  --blue-lite:   #7FC0FF;   /* accents on dark, where #046BD2 can't be read */
+  --red:         #C20E1F;   /* sign red — rules, tags, accents */
+  --red-deep:    #9C0A18;
+  --paper:       #FFFFFF;   /* page background */
+  --tint:        #F0F5FA;   /* secondary surface */
+  --ink:         #111111;   /* near-black text on light */
+  --ink-soft:    #475569;   /* muted body text on light */
+  --steel:       #64748B;   /* captions */
+  --paper-line:  rgba(17,17,17, 0.13);
+  --dark-line:   rgba(255,255,255, 0.18);
 
   /* Type */
   --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
@@ -37,7 +46,7 @@ html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
-  background: var(--bone);
+  background: var(--paper);
   color: var(--ink);
   font-family: var(--font-body);
   font-size: clamp(1rem, 0.96rem + 0.2vw, 1.075rem);
@@ -60,7 +69,7 @@ a { color: inherit; text-decoration: none; }
 img { max-width: 100%; display: block; }
 
 :focus-visible {
-  outline: 2px solid var(--brass);
+  outline: 2px solid var(--blue);
   outline-offset: 3px;
   border-radius: 2px;
 }
@@ -86,11 +95,11 @@ img { max-width: 100%; display: block; }
   font-weight: 500;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--brass-deep);
+  color: var(--red);
   padding: 0.38rem 0.7rem 0.38rem 1.15rem;
   position: relative;
   background: transparent;
-  border: 1px solid var(--brass);
+  border: 1px solid var(--red);
   border-radius: 3px 5px 5px 3px;
   clip-path: polygon(0.55rem 0, 100% 0, 100% 100%, 0.55rem 100%, 0 50%);
 }
@@ -104,7 +113,8 @@ img { max-width: 100%; display: block; }
   border-radius: 50%;
   background: currentColor;
 }
-.tag--onDark { color: var(--brass); border-color: rgba(198, 161, 91, 0.55); }
+/* On dark the red tag goes white — sign red on navy is unreadable at 0.7rem. */
+.tag--onDark { color: #fff; border-color: rgba(255, 255, 255, 0.5); }
 
 /* ---------- Buttons ---------- */
 .btn {
@@ -125,14 +135,18 @@ img { max-width: 100%; display: block; }
 .btn:hover { transform: translateY(-2px); }
 .btn:active { transform: translateY(0); }
 
-.btn--brass { background: var(--brass); color: var(--pine-3); }
-.btn--brass:hover { background: #d4b06a; }
+.btn--primary { background: var(--blue); color: #fff; }
+.btn--primary:hover { background: var(--blue-deep); }
+
+/* Used where the sign's red is the point — the "call today" moments. */
+.btn--red { background: var(--red); color: #fff; }
+.btn--red:hover { background: var(--red-deep); }
 
 .btn--ghost { background: transparent; color: var(--ink); border-color: var(--paper-line); }
 .btn--ghost:hover { border-color: var(--ink); }
 
-.btn--ghostDark { background: transparent; color: var(--bone); border-color: var(--dark-line); }
-.btn--ghostDark:hover { border-color: var(--brass); color: var(--brass); }
+.btn--ghostDark { background: transparent; color: var(--paper); border-color: var(--dark-line); }
+.btn--ghostDark:hover { border-color: #fff; color: #fff; }
 
 .btn__arrow { transition: transform 0.25s ease; }
 .btn:hover .btn__arrow { transform: translate(3px, -3px); }
@@ -141,7 +155,8 @@ img { max-width: 100%; display: block; }
 .lede { max-width: 46ch; }
 .eyebrow-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
 
-.serif-italic { font-style: italic; color: var(--brass-deep); }
+.serif-italic { font-style: italic; color: var(--red); }
+.serif-italic--onDark { color: var(--blue-lite); }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {

@@ -170,7 +170,7 @@ export function Auctions() {
           </Reveal>
           <Reveal delay={0.15}>
             <div className="auctions__actions">
-              <a className="btn btn--brass" href={SITE.auctions} target="_blank" rel="noreferrer">
+              <a className="btn btn--primary" href={SITE.auctions} target="_blank" rel="noreferrer">
                 See all our auctions
               </a>
               <a className="link-arrow link-arrow--light" href={SITE.consult} target="_blank" rel="noreferrer">
@@ -244,7 +244,7 @@ export function Process() {
                 clean-out — with discounted commission options and trusted, five-star service.
               </p>
               <div className="process__ctaActions">
-                <a className="btn btn--brass" href={SITE.consult} target="_blank" rel="noreferrer">
+                <a className="btn btn--primary" href={SITE.consult} target="_blank" rel="noreferrer">
                   Book a free consultation
                 </a>
                 <a className="btn btn--ghost" href={SITE.phoneHref}>Call {SITE.phone}</a>

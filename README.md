@@ -6,18 +6,23 @@ Built with Vite + React + Framer Motion.
 
 ## What's inside
 
-- **Cinematic hero** using your walkthrough video (`public/media/hero.mp4`),
-  tone-mapped from the original iPhone HDR clip to standard color and
-  compressed for the web (~6 MB, 1280×720, with a poster image for instant paint).
-- **Scroll-reveal animations** throughout (fade + rise, staggered), with a
-  count-up on the key stats. All motion respects `prefers-reduced-motion`.
+- **Scroll-scrubbed walkthrough** (`src/components/CineHero.jsx`). The
+  walkthrough video is exploded into a still sequence and drawn to a canvas at
+  whatever rate you scroll, with each frame cross-faded into the next so it
+  reads as film rather than a slideshow. Four text beats fade in and out over
+  the top as you go. See *Rebuilding the frames* below.
+- **Scroll-reveal animations** through the rest of the page (fade + rise,
+  staggered), with a count-up on the key stats. Motion respects
+  `prefers-reduced-motion`.
 - **All the content from lookestatesales.com**: the estate-sale pitch, the 95%
   sell-through stat, services (liquidation, evaluation, clean-out), what you
   handle (personal property, real estate, commercial), the online auctions
   section, the one-call process, reviews/trust badges, and the blog links.
-- A heritage/auction-house look: deep pine + antique brass, Fraunces + Hanken
-  Grotesk, and a recurring **price-tag motif** (estate sales tag and price
-  everything).
+- **The brand's own colours** — navy, white and the sign's red, over the site's
+  link blue. `#046BD2 / #045CB4 / #111111 / #334155 / #1E293B / #D1D5DB /
+  #F0F5FA` are lifted straight from lookestatesales.com's Astra globals;
+  `#C20E1F` and `#08234E` are sampled off the LOOK yard sign (the red arrow and
+  the navy type). Tokens live at the top of `src/styles/index.css`.
 
 ## Run locally
 
@@ -50,10 +55,24 @@ Add your domain in **Settings → Pages → Custom domain** and create a
 ## Editing content
 
 - **Contact details / nav** — `src/data.js`
-- **Copy and sections** — `src/components/Sections.jsx`, `Hero.jsx`, `Footer.jsx`
+- **Copy and sections** — `src/components/Sections.jsx`, `CineHero.jsx`, `Footer.jsx`
+- **The scroll beats** — the `BEATS` array and the markup in `CineHero.jsx`.
+  Each beat owns a window of scroll progress (fade in, hold, fade out), so
+  moving a number moves where that line appears in the walkthrough.
 - **Colors, fonts, spacing** — CSS variables at the top of `src/styles/index.css`
-- **Replace the video** — drop a new `hero.mp4` (and `poster.jpg`) into
-  `public/media/`. Keep it muted and roughly 1280×720 for fast loading.
+
+## Rebuilding the frames
+
+The source clip lives at `media-src/hero.mp4` — outside `public/`, so it is
+kept in the repo but never shipped to the browser. To regenerate the sequence
+(after replacing the clip, or to trade quality against weight):
+
+```bash
+./scripts/frames.sh              # needs ffmpeg on PATH
+```
+
+It writes `public/media/frames/f001.webp …`, prints the frame count, and the
+count must match `FRAME_COUNT` in `src/components/CineHero.jsx`.
 
 ## A note on images
 

@@ -11,7 +11,7 @@ export default function Footer() {
               This could be your sign.
               <br /><span className="serif-italic">One call away.</span>
             </h2>
-            <a className="btn btn--brass" href={SITE.consult} target="_blank" rel="noreferrer">
+            <a className="btn btn--primary" href={SITE.consult} target="_blank" rel="noreferrer">
               Schedule a consultation
             </a>
           </div>

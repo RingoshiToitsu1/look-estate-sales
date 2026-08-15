@@ -22,11 +22,17 @@ export default function Nav() {
       <div className="nav__inner wrap">
         <a href="#top" className="nav__brand" aria-label={SITE.name}>
           <span className="nav__mark" aria-hidden="true">
+            {/* The sign's mark: a house with a magnifier inside it. */}
             <svg viewBox="0 0 40 40" width="30" height="30">
-              <g transform="rotate(-18 20 20)">
-                <path d="M11 13h11l7 7-9 9-11-11v-5z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" />
-                <circle cx="15.5" cy="17.5" r="2.1" fill="currentColor" />
-              </g>
+              <path
+                d="M6.5 18.5 20 7.5l13.5 11v14h-27z"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinejoin="round"
+              />
+              <circle cx="19" cy="21" r="5" fill="none" stroke="currentColor" strokeWidth="2.4" />
+              <path d="M22.8 24.8 27.6 29.6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
             </svg>
           </span>
           <span className="nav__word">Look<span className="nav__word-sub">Estate Sales</span></span>
@@ -47,7 +53,7 @@ export default function Nav() {
 
         <div className="nav__cta">
           <a className="nav__phone" href={SITE.phoneHref}>{SITE.phone}</a>
-          <a className="btn btn--brass nav__book" href={SITE.consult} target="_blank" rel="noreferrer">
+          <a className="btn btn--primary nav__book" href={SITE.consult} target="_blank" rel="noreferrer">
             Book a consultation
           </a>
         </div>
@@ -76,7 +82,7 @@ export default function Nav() {
                 {item.label}
               </a>
             ))}
-            <a className="btn btn--brass" href={SITE.consult} target="_blank" rel="noreferrer">
+            <a className="btn btn--primary" href={SITE.consult} target="_blank" rel="noreferrer">
               Book a consultation
             </a>
             <a className="nav__drawer-phone" href={SITE.phoneHref}>Call {SITE.phone}</a>
