@@ -72,7 +72,52 @@ Add your domain in **Settings → Pages → Custom domain** and create a
 re-encode the page plays, with `walk-sm.mp4` for phones (picked at runtime by
 viewport width) and `walk-poster.jpg` for first paint. It is not a colour grade
 — the footage is redrawn as an illustration, because grading a grainy handheld
-phone clip only makes the grain look deliberate. To rebuild after a re-shoot:
+phone clip only makes the grain look deliberate.
+
+### Replacing the footage
+
+```bash
+scripts/rebuild-walk.sh ~/Downloads/new-walk.mp4 6.5
+#                       ^ the new clip          ^ where the first frame is
+```
+
+That is the whole job: it copies the clip in, draws it, encodes both cuts,
+makes the poster, and re-measures the camera track — all from one `START`,
+which is the reason the script exists. `START` has to be identical in the
+encode and in the track or the copy ends up pinned to a shot the page never
+shows, and it used to be hardcoded in two files.
+
+Two things it does not do. It will not pick `START` for you — the first frame
+is a still that everyone sees, so choose it as a composition (`ffmpeg -ss N -i
+clip.mp4 -frames:v 1 /tmp/f.jpg` to look at a candidate). And it will not
+re-cut the `BEATS` times in `CineHero.jsx`, which are seconds into the new
+footage and will be pointing at the wrong shots.
+
+**Shooting for this pipeline.** The drawing is unusually opinionated about what
+it is given, and all of these come from watching it fail:
+
+- **Shoot 60fps if the camera offers it.** The script detects it and skips
+  interpolation entirely — real frames beat computed ones, and it removes about
+  four minutes from the encode.
+- **Walk slowly, and turn slowly.** This matters more than anything else here.
+  Motion blur is baked into the frame, and flattening a blurred frame turns it
+  into a smear rather than a drawing. The two weakest moments in the current
+  clip are both fast pans.
+- **Landscape, and 1080p is plenty** — it is scaled to 1024 wide.
+- **Let the exposure settle.** Auto-exposure hunting shifts every flat colour in
+  the frame at once, which is far more visible once regions are uniform than it
+  is in the original footage.
+- **Contrast between objects helps.** The ink detects on colour as well as
+  brightness precisely because a cream settee against a cream wall nearly lost
+  its outline; that is a rescue, not a guarantee.
+- **Mind the lighting.** `colorbalance` in the recipe is tuned to correct the
+  table-lamp tungsten these rooms were shot under. Shoot in daylight or with
+  the overheads on and it will want re-tuning or removing.
+- **40–60 seconds, one continuous take.** The scroll stage maps the whole clip
+  across five screens, and there is no shot-change handling — a cut mid-clip
+  will read as a glitch and will break the camera track across it.
+
+To rebuild by hand instead, or to change the look:
 
 ```bash
 # The first frame is a still that everybody sees and most people judge the

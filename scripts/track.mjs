@@ -11,8 +11,9 @@
    flattens exactly the texture a matcher needs. Frame timing is identical
    (same -ss, same fps), so the indices line up with what the page plays.
 
-   Run from the repo root, after re-encoding the video:
-     node scripts/track.mjs            # or FFMPEG=/path/to/ffmpeg node ...
+   Normally you do not run this directly — scripts/rebuild-walk.sh runs it with
+   the same START it encoded with, which is the point of that script. Directly:
+     WALK_START=9.0 node scripts/track.mjs      # FFMPEG= if not on PATH
    START must match the -ss the encode used, or the copy will track a shot the
    page never shows. */
 import { execFileSync } from 'node:child_process'
@@ -20,7 +21,7 @@ import { writeFileSync, mkdirSync } from 'node:fs'
 
 const FF = process.env.FFMPEG || 'ffmpeg'
 const SRC = 'media-src/hero.mp4'
-const START = 9.0
+const START = Number(process.env.WALK_START ?? 9.0)
 const W = 160, H = 90            // tracking resolution
 const OUT = 'src/data/track.js'
 
