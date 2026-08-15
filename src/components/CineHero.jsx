@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { SITE } from '../data.js'
+import { TRACK, TRACK_FPS } from '../data/track.js'
 
 /* ============================================================
    CINEMATIC INTRO — the real walkthrough, driven by scroll.
@@ -23,22 +24,67 @@ import { SITE } from '../data.js'
    Seeking is left for the two cases playback can't cover: scrolling back up
    (video only runs forwards) and jumps too big to catch. The clip is encoded
    with a keyframe every second so those land quickly.
+
+   The copy is motion-tracked to the footage. src/data/track.js holds the
+   camera's measured path — pan and zoom per frame, solved offline from the
+   source footage — and each beat is anchored to the patch of house it was
+   placed over, then carried by that track for as long as it is on screen. So
+   the line about walking through the front door travels with the door. It is
+   the same data the camera moved by, which is why it lands: a curve tuned by
+   hand can match a shot's direction but never its timing.
    ============================================================ */
 
 /* Beats are pinned to moments in the FOOTAGE rather than to scroll positions,
    so a line stays with the thing it describes even if the section's height
    changes. Times are seconds into the walk; x/y place the copy as a percentage
-   of the frame; drift is how far it slides across its own window, which is what
-   makes it feel carried along by the camera instead of pasted on the glass. */
+   of the frame, at the moment the beat is fully in (`full`) — from there it is
+   the camera track, not a hand-drawn curve, that carries it. */
 const BEATS = [
-  { in: 0.0, full: 0.6, hold: 4.0, out: 5.4, x: 50, y: 64, drift: [0, -26] },
-  { in: 7.1, full: 8.5, hold: 12.5, out: 14.1, x: 50, y: 68, drift: [0, -22] },
-  { in: 16.1, full: 17.5, hold: 21.5, out: 23.1, x: 50, y: 66, drift: [-22, -14] },
-  { in: 25.5, full: 26.9, hold: 31.9, out: 33.5, x: 50, y: 62, drift: [0, -20] },
-  { in: 37.1, full: 38.5, hold: 99, out: 99, x: 50, y: 58, drift: [0, -14] },
+  { in: 0.0, full: 0.6, hold: 4.0, out: 5.4, x: 50, y: 64 },
+  { in: 7.1, full: 8.5, hold: 12.5, out: 14.1, x: 50, y: 68 },
+  { in: 16.1, full: 17.5, hold: 21.5, out: 23.1, x: 50, y: 66 },
+  { in: 25.5, full: 26.9, hold: 31.9, out: 33.5, x: 50, y: 62 },
+  { in: 37.1, full: 38.5, hold: 99, out: 99, x: 50, y: 58 },
 ]
 
+/* How much of the camera's real motion the copy takes on. Not 1:1, and it can't
+   be: the walk is straight at the house, so a point anchored beside the door
+   genuinely leaves the frame within a couple of seconds, and copy that honest
+   would be gone before it was read. At these values the copy moves WITH the
+   shot — same direction, same moment, same easing, since it's the same numbers
+   — at roughly half the amplitude, which is the part the eye actually reads as
+   "that line is sitting on the house."
+
+   Translation is soft-clamped rather than cut off (tanh): small moves come
+   through untouched and only large ones compress, so the copy never slams into
+   an invisible wall and parks there. Zoom is taken as a power, not a fraction,
+   because it compounds — r^0.22 turns a 2x walk-in into a 1.2x growth and a
+   wild 10x into 1.6x, without either one needing a special case. */
+const TRACK_PAN = 0.5
+const TRACK_ZOOM = 0.22
+const ZOOM_MIN = 0.9
+const ZOOM_MAX = 1.3
+
 const clamp = (v, a = 0, b = 1) => (v < a ? a : v > b ? b : v)
+const soft = (v, lim) => lim * Math.tanh(v / lim)
+
+/* The camera transform at time t: where a point that sat at the centre of the
+   first frame has got to, and how much everything has grown since. Linear
+   interpolation between the two nearest tracked frames — the track is sampled
+   at the video's own framerate, so this is only ever splitting one frame. */
+const TRACK_N = TRACK.length / 3
+function camAt(t) {
+  const f = clamp(t * TRACK_FPS, 0, TRACK_N - 1.0001)
+  const i = f | 0
+  const u = f - i
+  const j = i * 3
+  const k = j + 3
+  return {
+    s: TRACK[j] + (TRACK[k] - TRACK[j]) * u,
+    x: TRACK[j + 1] + (TRACK[k + 1] - TRACK[j + 1]) * u,
+    y: TRACK[j + 2] + (TRACK[k + 2] - TRACK[j + 2]) * u,
+  }
+}
 
 export default function CineHero() {
   const secRef = useRef(null)
@@ -51,14 +97,54 @@ export default function CineHero() {
     const beatEls = Array.from(sec.querySelectorAll('[data-beat]'))
     sec.classList.add('cine--on')
 
+    // resting position; everything after this is transform-only, per frame
+    beatEls.forEach((el, i) => {
+      el.style.left = `${BEATS[i].x}%`
+      el.style.top = `${BEATS[i].y}%`
+    })
+
     /* A phone gets the 640-wide cut: a third of the weight, into a frame a
        third of the size. */
     v.src = window.innerWidth < 760 ? './media/walk-sm.mp4' : './media/walk.mp4'
     v.load()
 
     let duration = 0
-    const onMeta = () => { duration = v.duration || 0 }
+
+    /* The track is in units of the video's own frame width, which is not the
+       width of anything on the page: the video is object-fit: cover, so it is
+       scaled up until it fills the stage and the overflow is cropped. This is
+       the factor that turns tracked motion into pixels on screen — and it moves
+       whenever the window does. */
+    let renderedW = 0
+    /* How far each beat is allowed to travel: whatever room is left between it
+       and the edge of the stage, less a margin. Derived per beat from its own
+       measured box rather than picked as a fraction of the viewport, because
+       the closing beat is a sentence and two buttons where the first is four
+       words — a limit generous enough for one is off the side of a phone for
+       the other. Paired with the tanh, this makes leaving the stage impossible
+       rather than unlikely. */
+    const lims = BEATS.map(() => ({ x: 0, y: 0 }))
+    const measure = () => {
+      const r = v.getBoundingClientRect()
+      const ar = (v.videoWidth || 1024) / (v.videoHeight || 576)
+      renderedW = Math.max(r.width, r.height * ar)
+      beatEls.forEach((el, i) => {
+        lims[i].x = Math.max(24, ((r.width - el.offsetWidth) / 2) * 0.85)
+        lims[i].y = Math.max(24, ((r.height - el.offsetHeight) / 2) * 0.8)
+      })
+    }
+    const onMeta = () => { duration = v.duration || 0; measure() }
     v.addEventListener('loadedmetadata', onMeta)
+    window.addEventListener('resize', measure)
+
+    /* Where each beat is anchored: the camera transform at the moment it is
+       fully on screen, plus its resting position in the frame — both in the
+       track's coordinates, which are width units measured from frame centre. */
+    const anchors = BEATS.map((b) => ({
+      cam: camAt(b.full),
+      px: (b.x - 50) / 100,
+      py: ((b.y - 50) / 100) * ((v.videoHeight || 576) / (v.videoWidth || 1024)),
+    }))
 
     let running = false
     const frame = () => {
@@ -88,6 +174,9 @@ export default function CineHero() {
         }
 
         const t = v.currentTime
+        if (!renderedW) measure()
+        const now = camAt(t)
+
         for (let i = 0; i < beatEls.length; i++) {
           const b = BEATS[i]
           const el = beatEls[i]
@@ -100,14 +189,25 @@ export default function CineHero() {
             el.style.visibility = 'hidden'
             continue
           }
-          const k = clamp((t - b.in) / (Math.min(b.out, b.hold + 1.6) - b.in))
+
+          /* Where the patch of house this line was placed on has moved to.
+             `now` and the anchor are both measured from frame 0, so composing
+             one with the inverse of the other gives the camera's move over just
+             this beat's window — which is why a beat entering, holding and
+             leaving all read as the same continuous shot. */
+          const a = anchors[i]
+          const r = now.s / a.cam.s
+          const ox = now.x - r * a.cam.x
+          const oy = now.y - r * a.cam.y
+          const dx = (r * a.px + ox - a.px) * renderedW
+          const dy = (r * a.py + oy - a.py) * renderedW
+
           el.style.opacity = o.toFixed(3)
           el.style.visibility = 'visible'
-          el.style.left = `${b.x}%`
-          el.style.top = `${b.y}%`
           el.style.transform =
-            `translate(-50%, -50%) translate(${(b.drift[0] * k).toFixed(1)}px, ${(b.drift[1] * k).toFixed(1)}px)` +
-            ` scale(${(0.985 + 0.03 * k).toFixed(4)})`
+            `translate(-50%, -50%) translate(${soft(dx * TRACK_PAN, lims[i].x).toFixed(1)}px, ` +
+            `${soft(dy * TRACK_PAN, lims[i].y).toFixed(1)}px)` +
+            ` scale(${clamp(Math.pow(r, TRACK_ZOOM), ZOOM_MIN, ZOOM_MAX).toFixed(4)})`
         }
       }
       requestAnimationFrame(frame)
@@ -116,7 +216,8 @@ export default function CineHero() {
     // only run while the stage is on screen, and let the video go when it isn't
     const io = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
-        if (e.isIntersecting && !running) { running = true; requestAnimationFrame(frame) }
+        // re-measure on the way in: web fonts landing changes how wide the copy is
+        if (e.isIntersecting && !running) { measure(); running = true; requestAnimationFrame(frame) }
         else if (!e.isIntersecting) { running = false; v.pause() }
       })
     }, { rootMargin: '15% 0px' })
@@ -126,6 +227,7 @@ export default function CineHero() {
       running = false
       io.disconnect()
       v.removeEventListener('loadedmetadata', onMeta)
+      window.removeEventListener('resize', measure)
       v.pause()
     }
   }, [])

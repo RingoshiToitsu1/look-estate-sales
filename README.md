@@ -11,7 +11,8 @@ house. Built with Vite + React + Framer Motion.
   footage, redrawn as a coloured illustration. Scroll sets a target time and the
   video is *played* toward it rather than scrubbed frame by frame, so every frame
   on screen is a real decoded frame. Five text beats are pinned to moments in the
-  footage and drift with the shot. See *The walkthrough* below.
+  footage and are motion-tracked to it — each line rides the patch of house it
+  was placed over. See *The walkthrough* below.
 - **Scroll-reveal animations** through the rest of the page (fade + rise,
   staggered), with a count-up on the key stats. Motion respects
   `prefers-reduced-motion`.
@@ -59,8 +60,9 @@ Add your domain in **Settings → Pages → Custom domain** and create a
 - **Copy and sections** — `src/components/Sections.jsx`, `CineHero.jsx`, `Footer.jsx`
 - **The scroll beats** — the `BEATS` array at the top of `CineHero.jsx`. Each
   entry is a window in SECONDS of footage (`in`/`full`/`hold`/`out`) plus where
-  the copy sits as a percentage of the frame, so a line stays with the shot it
-  describes however tall the section is.
+  the copy sits as a percentage of the frame at `full`, so a line stays with the
+  shot it describes however tall the section is. How much of the camera's motion
+  it then takes on is `TRACK_PAN` / `TRACK_ZOOM` just below.
 - **Colors, fonts, spacing** — CSS variables at the top of `src/styles/index.css`
 
 ## The walkthrough
@@ -76,12 +78,12 @@ phone clip only makes the grain look deliberate. To rebuild after a re-shoot:
 # from behind the trees
 START=1.5
 
-DRAW="hqdn3d=10:16:16:22,bilateral=sigmaS=18:sigmaR=0.13,split[base][e];\
-[base]lutyuv=y='clip(round(val/28)*28,20,236)',\
+DRAW="hqdn3d=12:18:18:24,bilateral=sigmaS=26:sigmaR=0.17,split[base][e];\
+[base]lutyuv=y='clip(round(val/40)*40,20,236)',\
 colorlevels=romin=0.08:gomin=0.08:bomin=0.08,\
-eq=saturation=1.40:contrast=0.99:brightness=0.02,format=gbrp[c];\
-[e]format=gray,gblur=sigma=1.0,edgedetect=low=0.05:high=0.15,negate,erosion,\
-gblur=sigma=0.5,format=gbrp[ink];\
+eq=saturation=1.55:contrast=0.99:brightness=0.02,format=gbrp[c];\
+[e]format=gray,gblur=sigma=1.0,edgedetect=low=0.045:high=0.13,negate,erosion,\
+erosion,gblur=sigma=0.45,format=gbrp[ink];\
 [c][ink]blend=all_mode=multiply:all_opacity=1.0,format=yuv420p"
 
 ffmpeg -ss $START -i media-src/hero.mp4 \
@@ -112,7 +114,42 @@ What each part is doing, and why it is in that order:
   back up is the one case that has to seek, and seeks land on keyframes.
 
 Flat areas and hard lines encode cheaply, so this comes out smaller than the
-graded version did (4.5MB / 1.7MB) despite the higher CRF.
+graded version did (4.1MB / 1.6MB) despite the higher CRF.
+
+There is a strength ceiling worth knowing about. Pushed further — coarser
+posterize, a second bilateral pass — the exteriors keep improving but the
+interiors stop working: the staged settee dissolves into a blob, and a room that
+doesn't read as furnished is the one thing this section cannot afford. The
+values above sit just under that.
+
+### The motion track
+
+The copy on the hero is tracked to the footage rather than slid along a tuned
+curve. `scripts/track.mjs` measures the camera's path — pan and zoom for every
+frame — and writes `src/data/track.js`; `CineHero` anchors each beat to the
+patch of house it was placed over and lets the track carry it from there.
+
+```bash
+node scripts/track.mjs        # FFMPEG=/path/to/ffmpeg if it isn't on PATH
+```
+
+It runs on `media-src/hero.mp4`, not on the drawn re-encode — the drawing
+flattens exactly the texture a matcher needs — with the same `-ss` and fps, so
+the frames line up with what the page plays. **Re-run it after any change to
+`START` or the framerate.** The grade it doesn't care about.
+
+Two things in there took a couple of tries and are easy to get wrong again:
+
+- **Scale is never searched directly.** Warping a frame to test a zoom resamples
+  it, resampling blurs it, and a blurrier candidate wins on SAD whether or not
+  it is right — so a direct search walks the zoom up every frame and compounds
+  into nonsense. Instead four windows are matched by pure translation and the
+  scale is read off how far apart they moved.
+- **The stored transform is cumulative from frame 0**, so the numbers get large
+  (the walk really does zoom by ~5000x end to end, since it starts across a
+  driveway and finishes at a table). The runtime only ever uses a ratio between
+  two of them, which is what makes that harmless — but it is why they are stored
+  to five decimals rather than rounded to something tidier.
 
 Beat timings are seconds into the *trimmed* clip, so changing `START` shifts all
 of them by the same amount. Check one by pulling the frame it lands on:
