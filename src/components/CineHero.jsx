@@ -271,8 +271,9 @@ export default function CineHero() {
           </div>
 
           <div className="cine__beat" data-beat="4">
-            <p className="cine__lead cine__lead--big">
-              Then <b>95% of it sells.</b>
+            <p className="cine__lead cine__lead--closing">
+              A professional approach to <b>maximizing the value</b> of our
+              clients&rsquo; estate.
             </p>
             <p className="cine__note">And we hand back an empty house.</p>
             <div className="cine__actions">

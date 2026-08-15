@@ -231,6 +231,9 @@
   text-shadow: var(--cine-shadow);
 }
 .cine__lead--big { font-size: clamp(2.2rem, 1.2rem + 4.6vw, 4.6rem); }
+/* The closing beat is a full sentence rather than a phrase, and it shares its
+   frame with the note and both buttons — so it sets smaller than the rest. */
+.cine__lead--closing { font-size: clamp(1.45rem, 1rem + 2.1vw, 2.5rem); max-width: 22ch; }
 .cine__lead b { color: #a9d6ff; font-weight: 500; }
 .cine__note,
 .cine__cue {
@@ -301,7 +304,7 @@
 .stats { background: var(--navy); color: var(--paper); }
 .stats__grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: clamp(1.5rem, 4vw, 3.5rem);
   margin-top: 1rem;
 }

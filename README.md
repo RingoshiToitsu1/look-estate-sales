@@ -16,10 +16,10 @@ house. Built with Vite + React + Framer Motion.
 - **Scroll-reveal animations** through the rest of the page (fade + rise,
   staggered), with a count-up on the key stats. Motion respects
   `prefers-reduced-motion`.
-- **All the content from lookestatesales.com**: the estate-sale pitch, the 95%
-  sell-through stat, services (liquidation, evaluation, clean-out), what you
-  handle (personal property, real estate, commercial), the online auctions
-  section, the one-call process, reviews/trust badges, and the blog links.
+- **All the content from lookestatesales.com**: the estate-sale pitch, services
+  (liquidation, evaluation, clean-out), what you handle (personal property, real
+  estate, commercial), the online auctions section, the one-call process,
+  reviews/trust badges, and the blog links.
 - **The brand's own colours** — navy, white and the sign's red, over the site's
   link blue. `#046BD2 / #045CB4 / #111111 / #334155 / #1E293B / #D1D5DB /
   #F0F5FA` are lifted straight from lookestatesales.com's Astra globals;

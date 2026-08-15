@@ -57,7 +57,6 @@ export function Intro() {
 /* ---------------- Stats band ---------------- */
 export function Stats() {
   const items = [
-    { n: 95, suffix: '%', label: 'Average sell-through on furniture, antiques, tools, vehicles and more' },
     { n: 0, prefix: '$', label: 'Upfront cost — we earn our commission by earning you top dollar' },
     { n: 1, suffix: '', label: 'One call handles organizing, marketing, selling and clean-out' },
     { n: 5, suffix: '★', label: 'Star-rated service, fully insured and BBB accredited' },
@@ -185,8 +184,8 @@ export function Auctions() {
             <p className="auctions__kicker">HiBid live</p>
             <p className="auctions__big">Bid from anywhere</p>
             <p className="auctions__note">
-              Whole-house liquidations with a 95% average sell-through — furniture,
-              collectibles, tools, vehicles and the home itself.
+              Whole-house liquidations run end to end — furniture, collectibles,
+              tools, vehicles and the home itself.
             </p>
             <a className="auctions__link" href={SITE.auctions} target="_blank" rel="noreferrer">
               lookestatesales.hibid.com
