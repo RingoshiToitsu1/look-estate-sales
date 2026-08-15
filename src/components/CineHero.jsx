@@ -53,16 +53,27 @@ const BEATS = [
   { in: 31.4, full: 32.6, hold: 99, out: 99, x: 50, y: 58 },
 ]
 
-/* The clip runs at the source footage's own 30fps. It was on twos (12fps) for a
-   while, for the cadence of limited hand animation, and that read as choppy
-   rather than as animation — the drawing carries the animated quality on its
-   own and does not need the frame rate's help. 30 rather than 24 because 24
-   would mean dropping two frames in every five of a 30fps source, and dropping
-   frames unevenly is its own judder; matching the source converts nothing.
+/* The clip runs at 60fps. The source is 30, so half of those frames do not
+   exist in it and are synthesised by motion interpolation at encode time — see
+   the README. It was on twos (12fps) for a while, for the cadence of limited
+   hand animation, and that read as choppy rather than as animated: the drawing
+   carries the animated quality on its own and does not need the frame rate's
+   help staying out of the way.
 
    The copy is quantised onto the same grid so it updates on real frame
    boundaries rather than between them. */
-const VIDEO_FPS = 30
+const VIDEO_FPS = 60
+
+/* How fast playback is allowed to run to catch up with the scroll.
+   60fps is twice the decoding work per second of footage, and the moment that
+   matters is a fast scroll — precisely when the browser is nearest to dropping
+   frames, and when dropped frames would undo the smoothness the 60 was for. So
+   the ceiling comes down from 4x as the frame rate goes up, keeping the
+   worst-case decode load where it already was: 60 x 2 is the same 120 frames a
+   second that 30 x 4 was. Nothing is lost by it — anything further behind than
+   the seek threshold below jumps instead of racing, which was always the
+   faster way to cover a big gap. */
+const MAX_RATE = 2
 
 /* TEMPORARY — the copy is off the hero while the animation itself is being got
    right, so that judging the animation means judging the animation. Setting
@@ -242,7 +253,7 @@ export default function CineHero() {
           /* The normal case, and the whole trick: play toward the target at a
              rate set by how far behind we are. Real decoded frames, at whatever
              speed the reader happens to be scrolling. */
-          v.playbackRate = clamp(diff * 4.5, 0.35, 4)
+          v.playbackRate = clamp(diff * 4.5, 0.35, MAX_RATE)
           if (v.paused) v.play().catch(() => {})
         } else if (diff < -0.09) {
           // scrolling back up: the one place a seek is unavoidable

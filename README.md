@@ -100,16 +100,20 @@ INK="bilateral=sigmaS=8:sigmaR=0.07,format=yuv444p,extractplanes=y+u+v[ey][eu][e
 [ly][lu]blend=all_mode=lighten[l1];\
 [l1][lv]blend=all_mode=lighten,negate,erosion,erosion,erosion,format=gbrp[ink]"
 
-DRAW="fps=30,scale=1024:-2,hqdn3d=14:20:20:26,split[forfill][foredge];\
+# minterpolate goes first, on the original footage: it needs the texture that
+# the drawing is about to remove. This is the step that makes 60 real rather
+# than 30 frames printed twice, and it is most of the encode time.
+DRAW="minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1,\
+scale=1024:-2,hqdn3d=14:20:20:26,split[forfill][foredge];\
 [forfill]${FILL}[c];\
 [foredge]${INK};\
 [c][ink]blend=all_mode=multiply:all_opacity=1.0,format=yuv420p"
 
 ffmpeg -ss $START -i media-src/hero.mp4 \
   -filter_complex "[0:v]${DRAW},split[big][small];[small]scale=640:-2[sm]" \
-  -map "[big]" -an -c:v libx264 -preset slow -crf 34 -g 30 -keyint_min 30 \
+  -map "[big]" -an -c:v libx264 -preset slow -crf 34 -g 60 -keyint_min 60 \
     -sc_threshold 0 -pix_fmt yuv420p -movflags +faststart public/media/walk.mp4 \
-  -map "[sm]" -an -c:v libx264 -preset slow -crf 35 -g 30 -keyint_min 30 \
+  -map "[sm]" -an -c:v libx264 -preset slow -crf 35 -g 60 -keyint_min 60 \
     -sc_threshold 0 -pix_fmt yuv420p -movflags +faststart public/media/walk-sm.mp4
 
 ffmpeg -i public/media/walk.mp4 -frames:v 1 -q:v 2 public/media/walk-poster.jpg
@@ -146,45 +150,54 @@ What each part is doing, and why it is in that order:
   banding on a wall. Blurred back out, the same steps become soft gradients that
   still change where a painter would have changed them. It only touches the fill
   branch, so the lines stay hard: soft colour, hard ink.
-- **`fps=30`, matching the source** — see *Frame rate* below.
+- **`minterpolate` to 60fps** — see *Frame rate* below.
 - **`colorbalance`** — the rooms were shot under table lamps, and pushing
   saturation on a tungsten cast turns every interior into a wall of orange. It
   is a white balance, not a look; without it the staircase and the living room
   come out the same colour as the wood floor.
-- **`-g 30 -keyint_min 30 -sc_threshold 0`** — a keyframe every second. Scrolling
+- **`-g 60 -keyint_min 60 -sc_threshold 0`** — a keyframe every second. Scrolling
   back up is the one case that has to seek, and seeks land on keyframes.
 
-Smooth gradients and small frame-to-frame deltas both compress well, so this
-comes out under the graded version it replaced despite running at 30fps:
-3.1MB / 1.2MB.
+Smooth gradients and small frame-to-frame deltas both compress well, so 60fps
+costs far less than doubling the frames suggests — 3.5MB / 1.4MB, only 13% over
+the same encode at 30.
 
 ### Frame rate
 
-**The source is 30fps.** That is the ceiling on real motion, and it is the first
-thing to know before touching this. Encoding at 60 without doing anything else
-duplicates every frame: twice the file, identical motion, no benefit whatsoever.
+**The source is 30fps.** That is the ceiling on *real* motion, and it is the
+first thing to know before touching any of this. Encoding at 60 without doing
+anything else simply duplicates every frame: twice the file, identical motion,
+no benefit whatsoever.
 
-It has been at three different rates, and the reasoning is worth keeping:
+The clip that ships is genuinely 60, because `minterpolate` synthesises the
+in-between frames from the motion between the real ones — hence its position at
+the very front of the chain, working on the original footage while it still has
+the texture that motion estimation needs. It is worth knowing it is a real
+choice with a real cost: about four minutes of encoding, and frames that were
+computed rather than photographed. On this footage it holds up, with no warping
+even through the fastest interior pan, because flat painted areas give the
+estimator an easy time and then hide what it gets slightly wrong.
+
+Rates that were tried and rejected, since each looks reasonable on paper:
 
 - **12fps (on twos)** — the cadence of limited hand animation, and the intuition
-  that the frame rate should carry the animated quality. It doesn't. It reads as
-  choppy, not as animated. The drawing is what makes it animation; the frame
-  rate just has to stay out of the way.
-- **24fps** — the cinematic default, and wrong here for a mechanical reason:
-  30 into 24 means discarding two frames in every five, unevenly. That judder is
-  a conversion artifact, not a look.
-- **30fps** — matches the source exactly, converts nothing, and is what ships.
+  that the frame rate should carry the animated quality. It does not. It reads
+  as choppy, not as animated. The drawing is what makes it animation.
+- **24fps** — the cinematic default, and wrong here mechanically: 30 into 24
+  discards two frames in every five, unevenly. That judder is a conversion
+  artifact, not a look.
+- **30fps** — correct and honest, matching the source and converting nothing.
+  Only beaten because interpolation to 60 turned out to be clean and nearly
+  free.
 
-Genuine 60fps is possible, by synthesising the in-between frames:
-`minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1` in front
-of the draw chain. It was tried, and it is clean — no warping even on the
-fastest interior pan, because the flat painted areas give the motion estimator
-an easy time. It is not shipped for one reason, and it is not file size: the
-hero drives playback at up to 4x `playbackRate` while you scroll, so a 60fps
-clip asks the browser to decode 240 frames a second during exactly the fast
-scroll where it is most likely to start dropping them. Choppiness caused by
-dropped frames under load is worse than the smoothness gained, and it lands on
-whoever has the slowest machine. 30fps at 4x is already 120.
+**The frame rate and `MAX_RATE` in `CineHero.jsx` are a pair, and changing one
+means changing the other.** The hero catches up with the scroll by playing
+faster, so the decode load is fps × rate, and the fast scroll where the rate
+peaks is exactly where a browser is nearest to dropping frames — which would
+undo the thing the 60 was for. The ceiling came down from 4x to 2x when the
+rate went from 30 to 60, holding that product at 120 frames a second. Nothing
+is lost by the lower ceiling: gaps bigger than the seek threshold jump instead
+of racing, which was always the faster way to cover distance.
 
 Two things that look obviously right and are not:
 
