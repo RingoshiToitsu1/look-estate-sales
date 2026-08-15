@@ -50,7 +50,7 @@ export default function CineHero() {
       const c = signTex.getContext('2d')
       const W = signTex.width, H = signTex.height
       c.clearRect(0, 0, W, H)
-      c.fillStyle = '#fff'
+      c.fillStyle = '#f4e6cd'
       c.fillRect(0, 0, W, H)
       c.strokeStyle = '#0d2a55'
       c.lineWidth = 5

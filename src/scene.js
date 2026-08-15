@@ -27,6 +27,7 @@ const NAVY_D = [5, 19, 46]
 const RED = [194, 14, 31]
 const RED_D = [140, 10, 22]
 const WHITE = [255, 255, 255]
+const CREAM = [244, 230, 205]   // the sign board, and the copy that sits over it
 const BONE = [238, 240, 244]
 const WARM = [255, 214, 150]
 /* Emissive surfaces — windows, lamps, the fire. Deliberately well below the
@@ -106,8 +107,8 @@ export function buildScene(tex = {}) {
   /* A long wall, cut into z-segments. One depth for a fourteen-metre wall
      sorts the whole thing by its midpoint, so everything past that point in the
      room ends up painted over — furniture reads as buried in the wall. */
-  const wallRunX = (x, z0, z1, y0, y1, col, shade, step = 2) => {
-    for (let z = z0; z < z1 - 1e-6; z += step) wallX(x, z, Math.min(z + step, z1), y0, y1, col, shade)
+  const wallRunX = (x, z0, z1, y0, y1, col, shade, opts, step = 2) => {
+    for (let z = z0; z < z1 - 1e-6; z += step) wallX(x, z, Math.min(z + step, z1), y0, y1, col, shade, opts)
   }
 
   /* Anything lying ON a floor — a rug, a runner — is cut OUT of the floor
@@ -167,44 +168,172 @@ export function buildScene(tex = {}) {
   face(
     [[SIGN.x - SIGN.halfW, SIGN.y0, SIGN.z], [SIGN.x + SIGN.halfW, SIGN.y0, SIGN.z],
      [SIGN.x + SIGN.halfW, SIGN.y1, SIGN.z], [SIGN.x - SIGN.halfW, SIGN.y1, SIGN.z]],
-    WHITE, 1, { tex: tex.sign }
+    CREAM, 1, { tex: tex.sign }
   )
 
-  /* ---- the house: facade split around the door opening ---- */
-  const FW = 7.4 // facade half-width
+  /* ---- the house ----
+     A two-storey colonial: lap siding, shuttered sash windows, a columned
+     portico under its pediment, dormers and a chimney on a side-gabled roof.
+     It is all flat quads. What makes it read as a house rather than a box is
+     the TRIM — thin bands of a lighter or darker tone everywhere a real house
+     has a lap joint, a sill, a lintel, a corner board or a fascia. */
+  const FW = 7.4                       // facade half-width
+  const EAVE = 5.9                     // where the wall stops and the roof starts
+  const RIDGE_Y = 7.9, RIDGE_Z = 30.6
   const DOOR_HW = 1.0, DOOR_H = 2.35
-  wallZRun(DOOR_Z, -FW, -DOOR_HW, 0, 5.4, SIDING, 0.76)
-  wallZRun(DOOR_Z, DOOR_HW, FW, 0, 5.4, SIDING, 0.76)
-  wallZ(DOOR_Z, -DOOR_HW, DOOR_HW, DOOR_H, 5.4, SIDING, 0.76)
-  face([[-FW, 5.4, DOOR_Z], [FW, 5.4, DOOR_Z], [0, 7.3, DOOR_Z]], mix(SIDING, NAVY, 0.3), 0.75) // gable
-  stripSlab(-FW - 0.4, DOOR_Z, FW + 0.4, DOOR_Z + 9, 5.4, NAVY_D, 0.7) // roof, seen from the drive
-  wallZ(DOOR_Z - 0.1, -FW - 0.5, FW + 0.5, 5.4, 5.64, NAVY, 0.9) // eaves
+  const TRIM = mix(SIDING, WHITE, 0.28)
+  const SHUTTER = mix(NAVY, SIDING, 0.16)
+  const ROOF = mix(NAVY_D, [34, 38, 50], 0.55)
+  const BRICK = [92, 60, 52]
 
-  // porch: step, columns, overhang
-  slab(-3.4, 24.6, 3.4, DOOR_Z, 0.44, mix(SIDING, NAVY, 0.12), 0.85)
-  wallZ(24.6, -3.4, 3.4, 0, 0.44, mix(SIDING, NAVY, 0.34), 0.75)
-  box(-2.7, 25.1, 0.26, 3.1, 0.26, SIDING, 0.44)
-  box(2.7, 25.1, 0.26, 3.1, 0.26, SIDING, 0.44)
-  slab(-3.4, 24.7, 3.4, DOOR_Z, 3.62, mix(SIDING, NAVY, 0.45), 0.6)
-  wallZ(24.68, -3.4, 3.4, 3.5, 3.78, SIDING, 0.74)
+  // the wall itself, split around the doorway
+  wallZRun(DOOR_Z, -FW, -DOOR_HW, 0, EAVE, SIDING, 0.76)
+  wallZRun(DOOR_Z, DOOR_HW, FW, 0, EAVE, SIDING, 0.76)
+  wallZ(DOOR_Z, -DOOR_HW, DOOR_HW, DOOR_H, EAVE, SIDING, 0.76)
 
-  // windows, lit from inside
-  for (const wx of [-5.9, -3.6, 3.6, 5.9]) {
-    const half = 0.78
-    wallZ(DOOR_Z - 0.05, wx - half - 0.1, wx + half + 0.1, 1.15, 3.15, mix(SIDING, NAVY, 0.45), 0.8, { proud: 0.6 })
-    wallZ(DOOR_Z - 0.06, wx - half, wx + half, 1.25, 3.05, LIT, 0.86, { glow: 0.3, proud: 0.65 })
+  /* Lap courses. One shadow line every 42cm is the whole difference between
+     siding and a painted panel; the doorway has to be stepped around. */
+  for (let y = 0.42; y < EAVE - 0.12; y += 0.42) {
+    const c = mix(SIDING, NAVY_D, 0.34)
+    if (y < DOOR_H) {
+      wallZ(DOOR_Z - 0.01, -FW, -DOOR_HW, y, y + 0.045, c, 0.8, { proud: 0.4 })
+      wallZ(DOOR_Z - 0.01, DOOR_HW, FW, y, y + 0.045, c, 0.8, { proud: 0.4 })
+    } else {
+      wallZ(DOOR_Z - 0.01, -FW, FW, y, y + 0.045, c, 0.8, { proud: 0.4 })
+    }
+  }
+  // storey band and corner boards
+  wallZ(DOOR_Z - 0.02, -FW, FW, 3.04, 3.22, TRIM, 0.86, { proud: 0.44 })
+  wallZ(DOOR_Z - 0.02, -FW, -FW + 0.26, 0, EAVE, TRIM, 0.82, { proud: 0.44 })
+  wallZ(DOOR_Z - 0.02, FW - 0.26, FW, 0, EAVE, TRIM, 0.82, { proud: 0.44 })
+  wallZ(DOOR_Z - 0.02, -FW, FW, EAVE - 0.24, EAVE, TRIM, 0.9, { proud: 0.44 })
+
+  /* A sash window: casing, lit glass, muntins, sill and a pair of shutters.
+     Six pieces of trim, and it stops being a glowing rectangle. */
+  const sashWindow = (cx, y0, y1, hw) => {
+    const my = (y0 + y1) / 2
+    wallZ(DOOR_Z - 0.03, cx - hw - 0.13, cx + hw + 0.13, y0 - 0.11, y1 + 0.13, TRIM, 0.92, { proud: 0.56 })
+    wallZ(DOOR_Z - 0.04, cx - hw, cx + hw, y0, y1, LIT, 0.86, { glow: 0.24, proud: 0.6 })
+    wallZ(DOOR_Z - 0.05, cx - 0.025, cx + 0.025, y0, y1, TRIM, 0.95, { proud: 0.64 })
+    wallZ(DOOR_Z - 0.05, cx - hw, cx + hw, my - 0.03, my + 0.03, TRIM, 0.95, { proud: 0.64 })
+    wallZ(DOOR_Z - 0.06, cx - hw - 0.2, cx + hw + 0.2, y0 - 0.18, y0 - 0.09, TRIM, 1, { proud: 0.68 })
+    wallZ(DOOR_Z - 0.02, cx - hw - 0.46, cx - hw - 0.15, y0 - 0.05, y1 + 0.07, SHUTTER, 0.78, { proud: 0.52 })
+    wallZ(DOOR_Z - 0.02, cx + hw + 0.15, cx + hw + 0.46, y0 - 0.05, y1 + 0.07, SHUTTER, 0.78, { proud: 0.52 })
+  }
+  for (const cx of [-5.9, -3.4, 3.4, 5.9]) sashWindow(cx, 1.15, 2.78, 0.72)
+  for (const cx of [-5.9, -3.4, 0, 3.4, 5.9]) sashWindow(cx, 3.62, 5.0, 0.62)
+
+  /* The doorway: casing, a fanlight over it, sidelights either side, and a
+     little entablature on top — the part of a colonial you actually look at. */
+  wallZ(DOOR_Z - 0.02, -DOOR_HW - 0.16, -DOOR_HW, 0, DOOR_H + 0.16, TRIM, 0.9, { proud: 0.56 })
+  wallZ(DOOR_Z - 0.02, DOOR_HW, DOOR_HW + 0.16, 0, DOOR_H + 0.16, TRIM, 0.9, { proud: 0.56 })
+  wallZ(DOOR_Z - 0.02, -DOOR_HW - 0.16, DOOR_HW + 0.16, DOOR_H, DOOR_H + 0.16, TRIM, 0.94, { proud: 0.56 })
+  wallZ(DOOR_Z - 0.03, -DOOR_HW - 0.5, DOOR_HW + 0.5, DOOR_H + 0.16, DOOR_H + 0.34, TRIM, 1, { proud: 0.6 })
+  wallZ(DOOR_Z - 0.04, -0.72, 0.72, DOOR_H + 0.36, DOOR_H + 0.72, LIT, 0.86, { glow: 0.22, proud: 0.62 })
+  for (const sx of [-1.34, 1.34]) {
+    wallZ(DOOR_Z - 0.03, sx - 0.16, sx + 0.16, 0.5, DOOR_H - 0.05, LIT, 0.8, { glow: 0.16, proud: 0.6 })
+    wallZ(DOOR_Z - 0.02, sx - 0.24, sx + 0.24, 0.34, 0.5, TRIM, 0.9, { proud: 0.56 })
   }
 
-  // the open door, and the light it throws down the steps
+  // the open door, swung back into the hall
   face(
     [[-DOOR_HW, 0, DOOR_Z + 0.05], [-DOOR_HW + 0.28, 0, DOOR_Z + 1.95],
      [-DOOR_HW + 0.28, DOOR_H, DOOR_Z + 1.95], [-DOOR_HW, DOOR_H, DOOR_Z + 0.05]],
     RED, 0.72
   )
-  wallZ(DOOR_Z - 0.02, -DOOR_HW - 0.14, -DOOR_HW, 0, DOOR_H + 0.14, mix(SIDING, RED, 0.2), 0.85, { proud: 0.6 })
-  wallZ(DOOR_Z - 0.02, DOOR_HW, DOOR_HW + 0.14, 0, DOOR_H + 0.14, mix(SIDING, RED, 0.2), 0.85, { proud: 0.6 })
-  wallZ(DOOR_Z - 0.02, -DOOR_HW - 0.14, DOOR_HW + 0.14, DOOR_H, DOOR_H + 0.14, mix(SIDING, RED, 0.2), 0.85, { proud: 0.6 })
-  slab(-1.5, 24.4, 1.5, DOOR_Z, 0.455, mix(LIT, [70, 58, 50], 0.42), 1, { glow: 0.12 })
+
+  /* Roof: side-gabled, sloping away from the eave. Banded along the slope both
+     so it sorts and so the fog steps across it. */
+  const BANDS = 5
+  for (let i = 0; i < BANDS; i++) {
+    const t0 = i / BANDS, t1 = (i + 1) / BANDS
+    const z0 = 25.45 + (RIDGE_Z - 25.45) * t0, z1 = 25.45 + (RIDGE_Z - 25.45) * t1
+    const y0 = EAVE + (RIDGE_Y - EAVE) * t0, y1 = EAVE + (RIDGE_Y - EAVE) * t1
+    face([[-FW - 0.6, y0, z0], [FW + 0.6, y0, z0], [FW + 0.6, y1, z1], [-FW - 0.6, y1, z1]], ROOF, 0.74 - i * 0.035)
+  }
+  slab(-FW - 0.6, 25.45, FW + 0.6, DOOR_Z, EAVE, mix(TRIM, NAVY, 0.35), 0.55)   // soffit
+  wallZ(25.44, -FW - 0.6, FW + 0.6, EAVE, EAVE + 0.28, TRIM, 0.82)              // fascia
+  wallZ(25.42, -FW - 0.6, FW + 0.6, EAVE - 0.1, EAVE, mix(NAVY_D, NAVY, 0.4), 0.9) // gutter
+
+  // dormers on the slope
+  for (const dx of [-3.4, 3.4]) {
+    const dz = 27.5
+    const by = EAVE + (RIDGE_Y - EAVE) * ((dz - 25.45) / (RIDGE_Z - 25.45)) - 0.35
+    box(dx, dz + 0.55, 1.55, 1.1, 1.1, SIDING, by)
+    face([[dx - 0.86, by + 1.1, dz], [dx + 0.86, by + 1.1, dz], [dx, by + 1.78, dz]], mix(SIDING, NAVY, 0.28), 0.82)
+    wallZ(dz - 0.02, dx - 0.62, dx + 0.62, by + 1.06, by + 1.2, TRIM, 0.95, { proud: 0.3 })
+    wallZ(dz - 0.03, dx - 0.4, dx + 0.4, by + 0.2, by + 0.95, LIT, 0.86, { glow: 0.2, proud: 0.34 })
+  }
+
+  // chimney
+  box(6.1, 29.4, 1.05, 3.6, 1.05, BRICK, 6.0)
+  box(6.1, 29.4, 1.25, 0.16, 1.25, mix(BRICK, WHITE, 0.25), 9.6)
+
+  /* ---- the portico ---- */
+  for (let i = 0; i < 3; i++) {   // steps
+    const y = 0.15 * i
+    slab(-2.6 + i * 0.1, 23.9 + i * 0.24, 2.6 - i * 0.1, 24.62, y + 0.15, mix(SIDING, NAVY, 0.2), 0.9)
+    wallZ(23.9 + i * 0.24, -2.6 + i * 0.1, 2.6 - i * 0.1, y, y + 0.15, mix(SIDING, NAVY, 0.42), 0.72)
+  }
+  slab(-3.5, 24.6, 3.5, DOOR_Z, 0.45, mix(SIDING, NAVY, 0.14), 0.88)              // deck
+  wallZ(24.6, -3.5, 3.5, 0.28, 0.45, mix(SIDING, NAVY, 0.4), 0.74)
+  for (const cx of [-3.05, -1.75, 1.75, 3.05]) {                                   // columns
+    box(cx, 25.15, 0.34, 0.14, 0.34, TRIM, 0.45)
+    box(cx, 25.15, 0.26, 3.0, 0.26, SIDING, 0.59)
+    box(cx, 25.15, 0.36, 0.16, 0.36, TRIM, 3.59)
+  }
+  for (const [a, b] of [[-3.05, -1.75], [1.75, 3.05]]) {                            // railings
+    box((a + b) / 2, 25.15, b - a - 0.3, 0.1, 0.14, TRIM, 1.0)
+    box((a + b) / 2, 25.15, b - a - 0.3, 0.08, 0.14, TRIM, 0.5)
+    for (let x = a + 0.28; x < b - 0.2; x += 0.22) box(x, 25.15, 0.06, 0.5, 0.06, TRIM, 0.52)
+  }
+  slab(-3.6, 24.5, 3.6, DOOR_Z, 3.75, mix(SIDING, NAVY, 0.5), 0.55)                // portico ceiling
+  wallZ(24.48, -3.6, 3.6, 3.75, 4.02, TRIM, 0.8)                                   // its fascia
+  face([[-3.6, 4.02, 24.5], [3.6, 4.02, 24.5], [0, 5.25, 24.5]], mix(SIDING, NAVY, 0.2), 0.85)  // pediment
+  face([[-3.3, 4.06, 24.46], [3.3, 4.06, 24.46], [0, 5.02, 24.46]], mix(SIDING, NAVY, 0.34), 0.8)
+  // porch lanterns either side of the door
+  for (const lx of [-1.85, 1.85]) {
+    box(lx, 25.9, 0.16, 0.34, 0.16, LIT, 2.35)
+    box(lx, 25.9, 0.2, 0.06, 0.2, mix(NAVY_D, NAVY, 0.5), 2.69)
+  }
+
+  /* Bunting along the portico rail — the red, white and blue that hangs at
+     every one of these sales. */
+  for (const bx of [-2.4, 0, 2.4]) {
+    /* Shade rather than colour does the work here: the copy passes right over
+       this bunting on the way to the door, and a white band at full strength
+       is the brightest thing in the frame. */
+    const cols = [[RED, 0.82], [CREAM, 0.68], [NAVY, 0.95]]
+    for (let i = 0; i < 3; i++) {
+      const x0 = bx - 0.54 + i * 0.36, x1 = x0 + 0.36
+      const [c, sh] = cols[i]
+      wallZ(24.44, x0, x1, 3.34, 3.74, c, sh)
+      face([[x0, 3.34, 24.44], [x1, 3.34, 24.44], [(x0 + x1) / 2, 3.08, 24.44]], c, sh * 0.92)
+    }
+  }
+
+  // light out of the doorway, onto the deck and down the steps
+  slab(-1.5, 24.5, 1.5, DOOR_Z, 0.46, mix(LIT, [70, 58, 50], 0.42), 1, { glow: 0.12 })
+
+  /* ---- planting ---- */
+  for (const [bx, bz, bw, bh] of [
+    [-6.2, 25.4, 1.5, 0.85], [-4.6, 25.4, 1.2, 0.65], [-3.0, 25.4, 1.0, 0.5],
+    [3.0, 25.4, 1.0, 0.5], [4.6, 25.4, 1.2, 0.68], [6.2, 25.4, 1.5, 0.88],
+  ]) {
+    box(bx, bz, bw, bh * 0.6, 0.9, [16, 40, 34], 0)
+    face([[bx - bw / 2, bh * 0.6, bz - 0.45], [bx + bw / 2, bh * 0.6, bz - 0.45], [bx, bh + 0.3, bz - 0.45]], [13, 34, 30], 0.95)
+  }
+  for (const ux of [-2.55, 2.55]) {   // urns flanking the steps
+    box(ux, 24.9, 0.42, 0.5, 0.42, mix(SIDING, NAVY, 0.3), 0.45)
+    face([[ux - 0.3, 0.95, 24.7], [ux + 0.3, 0.95, 24.7], [ux, 1.7, 24.7]], [15, 38, 32], 0.95)
+  }
+  for (const lz of [15.5, 20.5]) {    // lamp posts down the drive
+    for (const lx of [-2.95, 2.95]) {
+      box(lx, lz, 0.14, 2.1, 0.14, mix(NAVY_D, NAVY, 0.6), 0)
+      box(lx, lz, 0.3, 0.34, 0.3, LIT, 2.1)
+      slab(lx - 0.2, lz - 0.2, lx + 0.2, lz + 0.2, 2.44, mix(NAVY_D, NAVY, 0.4), 0.9)
+    }
+  }
 
   /* ---- inside: the hall, then the living room ---- */
   const HALL_HW = 2.6, HALL_END = 38, ROOM_HW = 5.6, ROOM_END = 52
@@ -220,15 +349,59 @@ export function buildScene(tex = {}) {
   wallX(DOOR_HW, DOOR_Z, DOOR_Z + 0.5, 0, DOOR_H, mix(INT_WALL, WHITE, 0.25), 0.7)
   slab(-DOOR_HW, DOOR_Z, DOOR_HW, DOOR_Z + 0.5, DOOR_H, mix(INT_WALL, WHITE, 0.15), 0.5)
 
-  // runner, hall table, a lamp on it
-  stripSlab(-1.1, DOOR_Z + 1, 1.1, HALL_END - 2, 0, mix(NAVY, WHITE, 0.15), 0.95)
-  box(-2.1, 31, 0.5, 0.78, 1.3, WOOD_D, 0)
-  box(-2.1, 31, 0.26, 0.42, 0.26, LIT, 0.78)
+  /* Trim. A baseboard, panelling under a chair rail, a crown at the ceiling:
+     three thin bands are the whole difference between a corridor and a hall.
+     Each runs in segments like the wall it hangs on — a twelve-metre band with
+     one centroid would lose to the near end of its own wall. */
+  const INT_TRIM = mix(INT_WALL, WHITE, 0.46)
+  const WAINSCOT = mix(INT_WALL, WHITE, 0.2)
+  for (const [wx, sh] of [[-HALL_HW, 0.78], [HALL_HW, 0.88]]) {
+    const dx = wx < 0 ? 0.04 : -0.04
+    wallRunX(wx + dx, DOOR_Z, HALL_END, 0, 0.17, INT_TRIM, sh, { proud: 0.46 })
+    wallRunX(wx + dx * 0.6, DOOR_Z, HALL_END, 0.17, 0.94, WAINSCOT, sh, { proud: 0.44 })
+    wallRunX(wx + dx, DOOR_Z, HALL_END, 0.94, 1.05, INT_TRIM, sh, { proud: 0.46 })
+    wallRunX(wx + dx, DOOR_Z, HALL_END, 2.76, 2.95, INT_TRIM, sh, { proud: 0.46 })
+    for (let z = DOOR_Z + 0.9; z < HALL_END - 1.2; z += 1.6) {
+      wallX(wx + dx * 1.8, z, z + 1.15, 0.3, 0.82, mix(WAINSCOT, WHITE, 0.14), sh, { proud: 0.5 })
+    }
+  }
 
-  // pictures down the hall
-  for (const z of [29, 32.5, 35.5]) {
-    wallX(-HALL_HW + 0.04, z, z + 0.9, 1.35, 2.15, mix(WOOD_D, WHITE, 0.35), 0.8, { proud: 0.6 })
-    wallX(HALL_HW - 0.04, z + 1.2, z + 2.1, 1.4, 2.1, mix(WOOD_D, WHITE, 0.25), 0.85, { proud: 0.6 })
+  // runner
+  stripSlab(-1.1, DOOR_Z + 1, 1.1, HALL_END - 2, 0, mix(NAVY, WHITE, 0.15), 0.95)
+  stripSlab(-0.86, DOOR_Z + 1.3, 0.86, HALL_END - 2.3, 0, mix(NAVY, WHITE, 0.3), 0.95)
+
+  /* Console table under a mirror — legs, not a block. Nothing in a house is a
+     solid lump to the floor, and the gap under a table is most of what tells
+     you it is furniture. */
+  box(-2.15, 31, 0.5, 0.06, 1.4, mix(WOOD, WHITE, 0.22), 0.76)
+  box(-2.15, 31, 0.44, 0.05, 1.3, WOOD_D, 0.5)
+  for (const lz of [30.42, 31.58]) {
+    box(-2.34, lz, 0.07, 0.76, 0.07, WOOD_D, 0)
+    box(-1.96, lz, 0.07, 0.76, 0.07, WOOD_D, 0)
+  }
+  box(-2.15, 30.72, 0.24, 0.36, 0.24, LIT, 0.82)
+  box(-2.15, 31.36, 0.2, 0.26, 0.2, mix(NAVY, WHITE, 0.3), 0.82)
+  wallX(-HALL_HW + 0.05, 30.3, 31.7, 1.45, 2.45, mix(WOOD_D, WHITE, 0.3), 0.78, { proud: 0.6 })
+  wallX(-HALL_HW + 0.07, 30.42, 31.58, 1.55, 2.35, mix(NAVY, WHITE, 0.28), 0.78, { proud: 0.62 })
+
+  /* Pictures, matted and framed rather than flat rectangles. */
+  const framedX = (wx, z0, z1, y0, y1, sh) => {
+    const dx = wx < 0 ? 0.04 : -0.04
+    wallX(wx + dx, z0, z1, y0, y1, mix(WOOD_D, WHITE, 0.2), sh, { proud: 0.58 })
+    wallX(wx + dx * 1.5, z0 + 0.09, z1 - 0.09, y0 + 0.09, y1 - 0.09, mix(BONE, WARM, 0.45), sh, { proud: 0.6 })
+    wallX(wx + dx * 2, z0 + 0.19, z1 - 0.19, y0 + 0.19, y1 - 0.19, mix(NAVY, WARM, 0.32), sh, { proud: 0.62 })
+  }
+  for (const z of [33.2, 35.4]) framedX(-HALL_HW, z, z + 0.95, 1.4, 2.2, 0.8)
+  for (const z of [29.4, 31.8, 34.6]) framedX(HALL_HW, z, z + 0.9, 1.45, 2.15, 0.85)
+
+  /* The staircase — a hall in a house like this has one, and a flight of
+     treads climbing out of frame says "estate" faster than any amount of
+     furniture. */
+  for (let i = 0; i < 10; i++) {
+    const y = i * 0.19, z = 33.6 + i * 0.29
+    box(1.88, z, 1.4, 0.19, 0.29, mix(WOOD, WHITE, 0.05), y)
+    box(1.88, z - 0.02, 1.44, 0.035, 0.3, mix(WOOD, WHITE, 0.3), y + 0.19)
+    if (i % 2 === 0) box(1.2, z, 0.07, 0.95 + y, 0.07, WOOD_D, y + 0.19)
   }
 
   // ceiling lights
@@ -241,11 +414,26 @@ export function buildScene(tex = {}) {
   stripSlab(-ROOM_HW, HALL_END, ROOM_HW, ROOM_END, 3.3, INT_CEIL, 0.88)
   wallRunX(-ROOM_HW, HALL_END, ROOM_END, 0, 3.3, INT_WALL, 0.78)
   wallRunX(ROOM_HW, HALL_END, ROOM_END, 0, 3.3, INT_WALL, 0.88)
+  for (const [wx, sh] of [[-ROOM_HW, 0.78], [ROOM_HW, 0.88]]) {
+    const dx = wx < 0 ? 0.04 : -0.04
+    wallRunX(wx + dx, HALL_END, ROOM_END, 0, 0.19, INT_TRIM, sh, { proud: 0.46 })
+    wallRunX(wx + dx, HALL_END, ROOM_END, 3.06, 3.3, INT_TRIM, sh, { proud: 0.46 })
+  }
+  wallZ(ROOM_END - 0.03, -ROOM_HW, ROOM_HW, 0, 0.19, INT_TRIM, 0.95, { proud: 0.4 })
+  wallZ(ROOM_END - 0.03, -ROOM_HW, ROOM_HW, 3.06, 3.3, INT_TRIM, 0.95, { proud: 0.4 })
+  // ceiling beams, in thirds so no single face spans the room
+  for (const bz of [41.2, 44.8, 48.4, 51.2]) {
+    for (const bx of [-3.73, 0, 3.73]) box(bx, bz, 3.73, 0.2, 0.28, mix(WOOD_D, INT_CEIL, 0.45), 3.1)
+  }
   wallZ(ROOM_END, -ROOM_HW, ROOM_HW, 0, 3.3, INT_WALL, 0.95)
   // the wall the hallway punches through
   wallZ(HALL_END, -ROOM_HW, -HALL_HW, 0, 3.3, INT_WALL, 0.62)
   wallZ(HALL_END, HALL_HW, ROOM_HW, 0, 3.3, INT_WALL, 0.62)
   wallZ(HALL_END, -HALL_HW, HALL_HW, 2.95, 3.3, INT_WALL, 0.62)
+  // the cased opening between the two
+  wallZ(HALL_END - 0.03, -HALL_HW - 0.22, -HALL_HW + 0.16, 0, 3.02, INT_TRIM, 0.66, { proud: 0.5 })
+  wallZ(HALL_END - 0.03, HALL_HW - 0.16, HALL_HW + 0.22, 0, 3.02, INT_TRIM, 0.66, { proud: 0.5 })
+  wallZ(HALL_END - 0.03, -HALL_HW - 0.22, HALL_HW + 0.22, 2.78, 3.02, INT_TRIM, 0.68, { proud: 0.5 })
 
   /* ---- the living room, staged as a sale ----
      Not a furnished room: a room that has been WORKED. Draped display tables,
@@ -257,11 +445,13 @@ export function buildScene(tex = {}) {
   stripSlab(-4.1, 50.6, 4.1, 51, 0, RUG, 0.95)
   stripSlab(-4.1, 44.4, -3.8, 50.6, 0, RUG, 0.95)
   stripSlab(3.8, 44.4, 4.1, 50.6, 0, RUG, 0.95)
-  stripSlab(-3.8, 44.4, 3.8, 50.6, 0, RUG_IN, 0.95)
+  floorAround(-3.8, 44.4, 3.8, 50.6, 0, RUG_IN, 0.95, [-1.95, 46.2, 1.95, 48.8])
+  floorAround(-1.95, 46.2, 1.95, 48.8, 0, mix(RED_D, WOOD_D, 0.5), 0.95, [-1.2, 46.9, 1.2, 48.1])
+  stripSlab(-1.2, 46.9, 1.2, 48.1, 0, mix(BONE, WARM, 0.55), 0.95)
 
   /* A price tag hung on the face of something, turned toward the camera. */
   const tag = (x, z, y) => {
-    wallZ(z - 0.005, x - 0.16, x + 0.16, y - 0.22, y, WHITE, 1, { proud: 0.3 })
+    wallZ(z - 0.005, x - 0.16, x + 0.16, y - 0.22, y, CREAM, 1, { proud: 0.3 })
     wallZ(z - 0.015, x - 0.185, x + 0.185, y - 0.255, y - 0.205, RED, 1, { proud: 0.32 })
   }
 
@@ -278,20 +468,40 @@ export function buildScene(tex = {}) {
   }
 
   // seating group, angled around the fireplace
-  box(-3.6, 49.4, 1.05, 0.82, 2.9, NAVY, 0) // sofa
-  box(-3.85, 49.4, 0.42, 1.35, 2.9, mix(NAVY, WHITE, 0.08), 0)
-  box(-3.55, 48.5, 0.5, 0.16, 0.5, mix(BONE, WARM, 0.4), 0.82) // cushions
-  box(-3.55, 50.3, 0.5, 0.16, 0.5, mix(RED, WHITE, 0.35), 0.82)
-  tag(-3.1, 47.95, 0.72)
-  box(3.2, 48.4, 1.05, 0.78, 1.1, RED_D, 0) // armchair
-  box(3.5, 48.4, 0.4, 1.2, 1.1, RED, 0)
-  tag(3.2, 47.85, 0.7)
-  box(3.35, 50.4, 0.95, 0.72, 1.0, mix(WOOD_D, RED, 0.25), 0) // its pair
-  box(3.62, 50.4, 0.38, 1.1, 1.0, mix(WOOD_D, RED, 0.4), 0)
+  /* Seating. Everything stands on legs with daylight under it — a sofa that
+     meets the floor along its whole length reads as a crate, whatever colour
+     it is. Arms and a back give it a silhouette from the side as well. */
+  box(-3.6, 49.4, 1.05, 0.6, 2.9, NAVY, 0.2)                              // sofa seat
+  box(-3.85, 49.4, 0.44, 1.15, 2.9, mix(NAVY, WHITE, 0.1), 0.2)           // back
+  box(-3.55, 48.12, 1.15, 0.32, 0.34, mix(NAVY, WHITE, 0.06), 0.5)        // arms
+  box(-3.55, 50.68, 1.15, 0.32, 0.34, mix(NAVY, WHITE, 0.06), 0.5)
+  for (const [lx, lz] of [[-3.25, 48.15], [-3.95, 48.15], [-3.25, 50.65], [-3.95, 50.65]]) {
+    box(lx, lz, 0.09, 0.2, 0.09, WOOD_D, 0)
+  }
+  box(-3.5, 48.75, 0.52, 0.16, 0.5, mix(BONE, WARM, 0.4), 0.8)            // cushions
+  box(-3.5, 50.05, 0.52, 0.16, 0.5, mix(RED, WHITE, 0.35), 0.8)
+  tag(-3.05, 47.95, 0.74)
 
-  // coffee table, laid out with books and a bowl
-  box(-0.2, 49.2, 1.7, 0.44, 0.95, WOOD_D, 0)
-  box(-0.2, 49.2, 1.5, 0.06, 0.8, mix(WOOD, WHITE, 0.2), 0.44)
+  const wingChair = (cx, cz, col) => {
+    box(cx, cz, 1.0, 0.42, 1.05, col, 0.22)                                // seat
+    box(cx + 0.3, cz, 0.4, 1.15, 1.05, mix(col, WHITE, 0.12), 0.22)        // back
+    box(cx - 0.06, cz - 0.5, 0.86, 0.26, 0.16, mix(col, WHITE, 0.08), 0.6) // arms
+    box(cx - 0.06, cz + 0.5, 0.86, 0.26, 0.16, mix(col, WHITE, 0.08), 0.6)
+    box(cx, cz, 0.78, 0.14, 0.82, mix(col, BONE, 0.3), 0.62)               // cushion
+    for (const [lx, lz] of [[cx - 0.4, cz - 0.42], [cx + 0.4, cz - 0.42], [cx - 0.4, cz + 0.42], [cx + 0.4, cz + 0.42]]) {
+      box(lx, lz, 0.08, 0.22, 0.08, WOOD_D, 0)
+    }
+  }
+  wingChair(3.15, 48.4, RED_D)
+  wingChair(3.3, 50.4, mix(WOOD_D, RED, 0.3))
+  tag(3.15, 47.85, 0.72)
+
+  // coffee table, laid out with books and a bowl — on legs, with a shelf under
+  box(-0.2, 49.2, 1.7, 0.06, 0.95, mix(WOOD, WHITE, 0.2), 0.42)
+  box(-0.2, 49.2, 1.5, 0.05, 0.78, WOOD_D, 0.2)
+  for (const [lx, lz] of [[-0.95, 48.82], [0.55, 48.82], [-0.95, 49.58], [0.55, 49.58]]) {
+    box(lx, lz, 0.08, 0.42, 0.08, WOOD_D, 0)
+  }
   box(-0.55, 49.05, 0.42, 0.09, 0.32, mix(BONE, WOOD, 0.3), 0.5) // stacked books
   box(-0.55, 49.05, 0.38, 0.07, 0.28, mix(NAVY, WHITE, 0.25), 0.59)
   box(0.3, 49.35, 0.34, 0.18, 0.34, mix(NAVY, WHITE, 0.45), 0.5) // bowl
@@ -316,7 +526,7 @@ export function buildScene(tex = {}) {
   )
   box(CHK.x, CHK.z, CHK.w + 0.06, 0.05, CHK.d + 0.06, mix(NAVY, WHITE, 0.12), CHK.h)
   box(CHK.x - 0.75, CHK.z - 0.1, 0.4, 0.22, 0.3, mix(WOOD_D, WHITE, 0.2), 0.85)  // cash box
-  box(CHK.x + 0.1, CHK.z + 0.05, 0.5, 0.06, 0.36, WHITE, 0.85)                   // tag stock
+  box(CHK.x + 0.1, CHK.z + 0.05, 0.5, 0.06, 0.36, CREAM, 0.85)                   // tag stock
   box(CHK.x + 0.75, CHK.z - 0.05, 0.3, 0.36, 0.3, LIT, 0.85)                     // lamp
   displayTable(2.4, 42.2, 1.6, 0.9, [
     [-0.5, 0.05, 0.34, 0.28, 0.24, LIT, true],                 // lamp, lit
@@ -347,6 +557,7 @@ export function buildScene(tex = {}) {
   wallX(-ROOM_HW + 0.05, 46.6, 49.4, 0.9, 2.5, mix(NAVY_D, NAVY, 0.5), 0.7, { proud: 0.55 })
   wallX(-ROOM_HW + 0.06, 46.4, 46.75, 0.6, 2.7, LINEN, 0.72, { proud: 0.6 })
   wallX(-ROOM_HW + 0.06, 49.25, 49.6, 0.6, 2.7, LINEN, 0.72, { proud: 0.6 })
+  wallX(-ROOM_HW + 0.07, 46.3, 49.7, 2.56, 2.88, mix(LINEN, NAVY, 0.12), 0.74, { proud: 0.62 })
 
   box(-4.7, 46.6, 0.5, 1.45, 0.5, WOOD_D, 0) // floor lamp
   box(-4.7, 46.6, 0.34, 0.42, 0.34, LIT, 1.45)
@@ -360,28 +571,43 @@ export function buildScene(tex = {}) {
     box(4.86, 47.3 - (i % 2) * 0.25, 0.28, 0.2, 0.36, mix(NAVY, WHITE, 0.2 + i * 0.12), y + 0.06)
   }
 
-  // fireplace wall: mantel dressed, mirror above, art either side
-  box(0, 51.5, 2.8, 1.4, 0.7, mix(INT_WALL, WHITE, 0.3), 0)
-  wallZ(51.14, -0.85, 0.85, 0.15, 1.05, LIT, 0.95, { glow: 0.4, proud: 0.3 })
-  box(0, 51.5, 3.2, 0.12, 0.85, mix(INT_WALL, WHITE, 0.22), 1.4)
-  box(-1.15, 51.4, 0.12, 0.42, 0.12, mix(WOOD, WHITE, 0.45), 1.52) // candlesticks
-  box(-0.92, 51.4, 0.1, 0.32, 0.1, mix(WOOD, WHITE, 0.45), 1.52)
-  box(1.1, 51.4, 0.26, 0.34, 0.26, mix(NAVY, WHITE, 0.25), 1.52) // vase
-  wallZ(ROOM_END - 0.05, -1.3, 1.3, 1.85, 2.95, mix(NAVY, WHITE, 0.3), 0.9, { proud: 0.5 }) // mirror
-  wallZ(ROOM_END - 0.04, -2.9, -1.8, 1.5, 2.5, mix(WOOD_D, WHITE, 0.3), 0.92, { proud: 0.5 }) // art
-  wallZ(ROOM_END - 0.04, 1.8, 2.9, 1.6, 2.4, mix(WOOD_D, WHITE, 0.2), 0.92, { proud: 0.5 })
+  /* The chimneypiece: hearth, pilasters either side, a header across and a
+     mantel shelf over it, with the fire set back in the opening. */
+  box(0, 51.9, 3.5, 0.14, 0.62, mix(INT_WALL, WHITE, 0.16), 0)            // hearth
+  box(-1.32, 51.62, 0.46, 1.48, 0.58, mix(INT_WALL, WHITE, 0.36), 0)      // pilasters
+  box(1.32, 51.62, 0.46, 1.48, 0.58, mix(INT_WALL, WHITE, 0.36), 0)
+  box(0, 51.62, 3.1, 0.32, 0.58, mix(INT_WALL, WHITE, 0.3), 1.48)         // header
+  box(0, 51.6, 3.46, 0.12, 0.78, mix(INT_WALL, WHITE, 0.42), 1.8)         // mantel shelf
+  wallZ(51.32, -1.05, 1.05, 0.06, 1.46, [24, 17, 14], 0.9, { proud: 0.28 })    // firebox
+  wallZ(51.3, -0.82, 0.82, 0.1, 0.82, LIT, 0.95, { glow: 0.42, proud: 0.3 })   // the fire
+  box(-1.2, 51.5, 0.11, 0.44, 0.11, mix(WOOD, WHITE, 0.5), 1.92)          // candlesticks
+  box(-0.98, 51.5, 0.09, 0.33, 0.09, mix(WOOD, WHITE, 0.5), 1.92)
+  box(1.12, 51.5, 0.26, 0.36, 0.26, mix(NAVY, WHITE, 0.25), 1.92)         // vase
+  wallZ(ROOM_END - 0.04, -1.52, 1.52, 2.05, 3.02, mix(INT_TRIM, WHITE, 0.3), 0.94, { proud: 0.5 })
+  wallZ(ROOM_END - 0.05, -1.36, 1.36, 2.16, 2.9, mix(NAVY, WHITE, 0.34), 0.9, { proud: 0.52 })
+  for (const [a, b] of [[-3.1, -1.9], [1.9, 3.1]]) {
+    wallZ(ROOM_END - 0.04, a, b, 1.5, 2.6, mix(WOOD_D, WHITE, 0.24), 0.92, { proud: 0.5 })
+    wallZ(ROOM_END - 0.05, a + 0.1, b - 0.1, 1.6, 2.5, mix(BONE, WARM, 0.45), 0.92, { proud: 0.52 })
+    wallZ(ROOM_END - 0.06, a + 0.2, b - 0.2, 1.7, 2.4, mix(NAVY, WARM, 0.3), 0.92, { proud: 0.54 })
+  }
 
   // art hung down both side walls, the way a sale gets priced up
-  for (const z of [42.6, 45.4, 48.2]) {
-    wallX(-ROOM_HW + 0.04, z, z + 1.0, 1.6, 2.5, mix(WOOD_D, WHITE, 0.28), 0.78, { proud: 0.6 })
-    wallX(ROOM_HW - 0.04, z + 0.6, z + 1.5, 1.7, 2.45, mix(WOOD_D, WHITE, 0.2), 0.86, { proud: 0.6 })
-  }
+  for (const z of [39.4, 42.6]) framedX(-ROOM_HW, z, z + 1.05, 1.62, 2.52, 0.78)
+  for (const z of [39.9, 42.2, 49.4]) framedX(ROOM_HW, z, z + 0.95, 1.7, 2.48, 0.86)
 
-  // pendant lights over the tables — the pin-spots that make a sale look staged
-  for (const [x, z] of [[-2.5, 42.6], [2.4, 42.2], [0, 48.4]]) {
-    box(x, z, 0.06, 0.55, 0.06, WOOD_D, 2.75)
-    slab(x - 0.22, z - 0.22, x + 0.22, z + 0.22, 2.75, LIT, 0.95, { glow: 0.26 })
+  // pin-spots over the display tables
+  for (const [x, z] of [[-2.5, 42.6], [2.4, 42.2]]) {
+    box(x, z, 0.06, 0.5, 0.06, WOOD_D, 2.6)
+    slab(x - 0.22, z - 0.22, x + 0.22, z + 0.22, 2.6, LIT, 0.95, { glow: 0.26 })
   }
+  /* Chandelier over the seating: rose, stem, tier, four candle lamps. */
+  slab(-0.62, 48.82, 0.22, 49.42, 3.09, mix(INT_TRIM, WHITE, 0.25), 0.55)
+  box(-0.2, 49.12, 0.07, 0.6, 0.07, mix(WOOD_D, WHITE, 0.3), 2.5)
+  box(-0.2, 49.12, 0.62, 0.1, 0.62, mix(WOOD_D, WHITE, 0.4), 2.42)
+  for (const [ax, az] of [[-0.5, 49.12], [0.1, 49.12], [-0.2, 48.82], [-0.2, 49.42]]) {
+    box(ax, az, 0.14, 0.2, 0.14, LIT, 2.3)
+  }
+  slab(-0.5, 48.82, 0.1, 49.42, 2.28, LIT, 1, { glow: 0.3 })
 
   // crated and boxed lots, still being carried through
   const lots = [[-3.4, 39.8, 0.9], [-2.1, 40.6, 0.55], [3.1, 40.1, 0.75], [4.1, 41.4, 0.5], [-1.6, 46.4, 0.62], [1.9, 46.1, 0.8], [4.5, 50.4, 0.7]]
