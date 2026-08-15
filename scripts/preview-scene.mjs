@@ -68,7 +68,7 @@ STOPS.forEach((p, i) => {
     .join('')
 
   const marks = BEATS.map((b, n) => {
-    const s = beatAt(b, cam, view)
+    const s = beatAt(n, cam, view)
     if (!s || s.opacity < 0.02) return ''
     const o = s.opacity.toFixed(2)
     return (

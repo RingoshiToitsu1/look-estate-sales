@@ -141,7 +141,7 @@ export default function CineHero() {
       /* ---- the beats, tracked to their anchors in the scene ---- */
       for (let i = 0; i < beatEls.length; i++) {
         const el = beatEls[i]
-        const b = beatAt(BEATS[i], cam, view)
+        const b = beatAt(i, cam, view)
         if (!b || b.opacity < 0.01) {
           el.style.opacity = 0
           el.style.visibility = 'hidden'

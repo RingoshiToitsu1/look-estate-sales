@@ -342,8 +342,30 @@ export function drawList(faces, cam, view) {
   return { items, sky: mix(NAVY_D, WARM_D, inside), fog, inside }
 }
 
-/** Where a beat's anchor lands on screen, and how big and visible it is. */
-export function beatAt(beat, cam, view) {
+/* Visibility windows, in camera position rather than distance.
+   ============================================================
+   Beats fade on their own distance would overlap: a beat 14 metres ahead is
+   already legible while the one you are walking past is still on screen, and
+   the upcoming line reads THROUGH the current one. So each beat's window is
+   chained to its predecessor's — nothing starts arriving until the beat before
+   it has completely cleared, which means exactly one line is ever on screen.
+
+     inFrom → fullFrom   fading in
+     fullFrom → holdEnd  fully readable
+     holdEnd → goneAt    falling away as the camera passes through it */
+const WINDOWS = BEATS.map((b) => ({ z: b.at[2] })).map((w, i, all) => {
+  const holdEnd = w.z - 4.6
+  const goneAt = w.z - 2.2
+  /* The opening beat is up at scroll zero; the rest wait their turn. */
+  const inFrom = i === 0 ? CAM_START - 1 : all[i - 1].z - 2.2
+  const fullFrom = i === 0 ? CAM_START : inFrom + Math.min(4, Math.max(0.6, (holdEnd - inFrom) * 0.45))
+  return { inFrom, fullFrom, holdEnd, goneAt }
+})
+
+/** Where beat `i`'s anchor lands on screen, and how big and visible it is. */
+export function beatAt(i, cam, view) {
+  const beat = BEATS[i]
+  const w = WINDOWS[i]
   const dz = beat.at[2] - cam.z
   if (dz <= 0.6) return null
   const s = view.f / dz
@@ -353,7 +375,9 @@ export function beatAt(beat, cam, view) {
     /* Honest perspective ratio, floored so distant copy stays readable and
        capped so it doesn't blow past the frame on its way by. */
     scale: clamp(beat.d0 / dz, 0.42, 1.9),
-    /* Arrives out of the distance, falls away as it passes the camera. */
-    opacity: Math.min(clamp((26 - dz) / 9), clamp((dz - 1.9) / 2.6)),
+    opacity: Math.min(
+      clamp((cam.z - w.inFrom) / (w.fullFrom - w.inFrom)),
+      clamp((w.goneAt - cam.z) / (w.goneAt - w.holdEnd))
+    ),
   }
 }
