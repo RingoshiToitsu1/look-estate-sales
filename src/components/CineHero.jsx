@@ -4,9 +4,12 @@ import { SITE } from '../data.js'
 /* ============================================================
    CINEMATIC INTRO — the real walkthrough, driven by scroll.
    ============================================================
-   This is the actual footage (graded, public/media/walk.mp4), not a rendering
-   of it. Scroll decides where in the walk you are; the video decodes at its own
-   framerate to get there.
+   This is the actual footage (public/media/walk.mp4), redrawn rather than
+   graded: flattened into painted areas with ink lines over them, which is what
+   gets rid of the phone-sensor grain instead of trying to hide it. Scroll
+   decides where in the walk you are; the video decodes at its own framerate to
+   get there. The clip starts after the yard flag has left frame, so the opening
+   shot is the house coming out from behind the trees.
 
    Why it isn't soft any more. The first version exploded the clip into stills
    and cross-faded between them, so every scroll position BETWEEN two stills was
@@ -28,11 +31,11 @@ import { SITE } from '../data.js'
    of the frame; drift is how far it slides across its own window, which is what
    makes it feel carried along by the camera instead of pasted on the glass. */
 const BEATS = [
-  { in: 0.0, full: 0.6, hold: 4.6, out: 6.0, x: 50, y: 64, drift: [0, -26] },
-  { in: 8.6, full: 10.0, hold: 14.0, out: 15.6, x: 50, y: 68, drift: [0, -22] },
-  { in: 17.6, full: 19.0, hold: 23.0, out: 24.6, x: 50, y: 66, drift: [-22, -14] },
-  { in: 27.0, full: 28.4, hold: 33.4, out: 35.0, x: 50, y: 62, drift: [0, -20] },
-  { in: 38.6, full: 40.0, hold: 99, out: 99, x: 50, y: 58, drift: [0, -14] },
+  { in: 0.0, full: 0.6, hold: 4.0, out: 5.4, x: 50, y: 64, drift: [0, -26] },
+  { in: 7.1, full: 8.5, hold: 12.5, out: 14.1, x: 50, y: 68, drift: [0, -22] },
+  { in: 16.1, full: 17.5, hold: 21.5, out: 23.1, x: 50, y: 66, drift: [-22, -14] },
+  { in: 25.5, full: 26.9, hold: 31.9, out: 33.5, x: 50, y: 62, drift: [0, -20] },
+  { in: 37.1, full: 38.5, hold: 99, out: 99, x: 50, y: 58, drift: [0, -14] },
 ]
 
 const clamp = (v, a = 0, b = 1) => (v < a ? a : v > b ? b : v)

@@ -7,10 +7,10 @@ house. Built with Vite + React + Framer Motion.
 ## What's inside
 
 - **The walk-up** (`src/components/CineHero.jsx`). Scrolling walks you up the
-  driveway, past the banner, onto the porch, through the front door and into the
-  house — in the real footage, graded. Scroll sets a target time and the video is
-  *played* toward it rather than scrubbed frame by frame, so every frame on
-  screen is a real decoded frame. Five text beats are pinned to moments in the
+  driveway, onto the porch, through the front door and into the house — the real
+  footage, redrawn as a coloured illustration. Scroll sets a target time and the
+  video is *played* toward it rather than scrubbed frame by frame, so every frame
+  on screen is a real decoded frame. Five text beats are pinned to moments in the
   footage and drift with the shot. See *The walkthrough* below.
 - **Scroll-reveal animations** through the rest of the page (fade + rise,
   staggered), with a count-up on the key stats. Motion respects
@@ -66,35 +66,59 @@ Add your domain in **Settings → Pages → Custom domain** and create a
 ## The walkthrough
 
 `media-src/hero.mp4` is the original phone clip; `public/media/walk.mp4` is the
-graded re-encode the page plays, with `walk-sm.mp4` for phones (picked at
-runtime by viewport width) and `walk-poster.jpg` for first paint. To rebuild
-them after a re-shoot:
+re-encode the page plays, with `walk-sm.mp4` for phones (picked at runtime by
+viewport width) and `walk-poster.jpg` for first paint. It is not a colour grade
+— the footage is redrawn as an illustration, because grading a grainy handheld
+phone clip only makes the grain look deliberate. To rebuild after a re-shoot:
 
 ```bash
-GRADE="hqdn3d=4:3:6:6,eq=contrast=1.14:saturation=0.92:gamma=0.97,\
-colorbalance=rs=-0.05:bs=0.10:rm=0.02:bm=-0.02:rh=0.07:bh=-0.06,\
-unsharp=5:5:0.5,vignette=PI/5"
+# the flag is in frame until ~1.15s; 1.5 opens on the house coming out
+# from behind the trees
+START=1.5
 
-ffmpeg -i media-src/hero.mp4 -vf "$GRADE,fps=24,scale=1024:-2" -an \
-  -c:v libx264 -preset slow -crf 31 -g 24 -keyint_min 24 -sc_threshold 0 \
-  -pix_fmt yuv420p -movflags +faststart public/media/walk.mp4
+DRAW="hqdn3d=10:16:16:22,bilateral=sigmaS=18:sigmaR=0.13,split[base][e];\
+[base]lutyuv=y='clip(round(val/28)*28,20,236)',\
+colorlevels=romin=0.08:gomin=0.08:bomin=0.08,\
+eq=saturation=1.40:contrast=0.99:brightness=0.02,format=gbrp[c];\
+[e]format=gray,gblur=sigma=1.0,edgedetect=low=0.05:high=0.15,negate,erosion,\
+gblur=sigma=0.5,format=gbrp[ink];\
+[c][ink]blend=all_mode=multiply:all_opacity=1.0,format=yuv420p"
+
+ffmpeg -ss $START -i media-src/hero.mp4 \
+  -filter_complex "[0:v]fps=24,scale=1024:-2,${DRAW},split[big][small];\
+[small]scale=640:-2[sm]" \
+  -map "[big]" -an -c:v libx264 -preset slow -crf 33 -g 24 -keyint_min 24 \
+    -sc_threshold 0 -pix_fmt yuv420p -movflags +faststart public/media/walk.mp4 \
+  -map "[sm]" -an -c:v libx264 -preset slow -crf 34 -g 24 -keyint_min 24 \
+    -sc_threshold 0 -pix_fmt yuv420p -movflags +faststart public/media/walk-sm.mp4
+
+ffmpeg -i public/media/walk.mp4 -frames:v 1 -q:v 4 public/media/walk-poster.jpg
 ```
 
-Three parts of that carry their weight:
+What each part is doing, and why it is in that order:
 
-- **hqdn3d** — handheld phone footage is full of sensor noise, which is
-  expensive to encode and compresses into mush. Denoising first is what takes
-  the file from 23MB to 6MB at the same apparent quality.
+- **hqdn3d then bilateral** — denoise, then flatten. Bilateral is the one that
+  makes it look painted: it averages within an area but refuses to average
+  across an edge, so a brick wall becomes one tone while its outline survives.
+- **`lutyuv` on Y only** — posterizing each RGB channel separately makes a
+  near-grey gradient cross its thresholds at different points per channel, which
+  is where the rainbow blotching on walls and carpet came from. Quantizing
+  brightness alone keeps hue continuous.
+- **the ink branch splits off *before* the posterize** — drawn from the
+  posterized image, the lines trace the banding instead of the objects. The
+  `erosion` after `negate` is what fattens hairlines into something that still
+  reads at 1024 wide.
 - **`-g 24 -keyint_min 24 -sc_threshold 0`** — a keyframe every second. Scrolling
   back up is the one case that has to seek, and seeks land on keyframes.
-- **the vignette and colour balance** — cool shadows, warm highlights. It is
-  what makes a phone walkthrough read as deliberate.
 
-Beat timings are seconds into the clip, so re-cutting the footage means moving
-those numbers. Check one by pulling the frame it lands on:
+Flat areas and hard lines encode cheaply, so this comes out smaller than the
+graded version did (4.5MB / 1.7MB) despite the higher CRF.
+
+Beat timings are seconds into the *trimmed* clip, so changing `START` shifts all
+of them by the same amount. Check one by pulling the frame it lands on:
 
 ```bash
-ffmpeg -ss 19 -i public/media/walk.mp4 -frames:v 1 beat2.jpg
+ffmpeg -ss 17.5 -i public/media/walk.mp4 -frames:v 1 beat2.jpg
 ```
 
 ## A note on images
