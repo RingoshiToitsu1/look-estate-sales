@@ -29,11 +29,15 @@ const RED_D = [140, 10, 22]
 const WHITE = [255, 255, 255]
 const BONE = [238, 240, 244]
 const WARM = [255, 214, 150]
+/* Emissive surfaces — windows, lamps, the fire. Deliberately well below the
+   white of the copy: these are the brightest things in the frame, and the
+   headline has to read over the house they light. */
+const LIT = [204, 162, 110]
 const WARM_D = [58, 42, 30]
 const WOOD = [124, 84, 54]
 const WOOD_D = [86, 58, 38]
-const SIDING = [176, 186, 200]   // white siding, seen at dusk
-const INT_WALL = [122, 104, 88]  // interior, lit only by lamps
+const SIDING = [138, 148, 166]   // white siding, seen at dusk
+const INT_WALL = [110, 94, 80]   // interior, lit only by lamps
 const INT_CEIL = [74, 64, 56]
 
 export const clamp = (v, a = 0, b = 1) => (v < a ? a : v > b ? b : v)
@@ -117,7 +121,7 @@ export function buildScene(tex = {}) {
   for (let z = -22, i = 0; z < 24.6; z += 2.4, i++) {
     const warmth = clamp((z - 15) / 11) * 0.5
     const base = i % 2 ? [24, 48, 80] : [31, 57, 92]
-    slab(-2.1, z, 2.1, Math.min(z + 2.4, 24.6), 0, mix(base, WARM, warmth * 0.5), 1)
+    slab(-2.1, z, 2.1, Math.min(z + 2.4, 24.6), 0, mix(base, LIT, warmth * 0.34), 1)
   }
 
   /* ---- trees: billboard silhouettes, thinning out toward the house ---- */
@@ -147,9 +151,9 @@ export function buildScene(tex = {}) {
   /* ---- the house: facade split around the door opening ---- */
   const FW = 7.4 // facade half-width
   const DOOR_HW = 1.0, DOOR_H = 2.35
-  wallZ(DOOR_Z, -FW, -DOOR_HW, 0, 5.4, SIDING, 0.82)
-  wallZ(DOOR_Z, DOOR_HW, FW, 0, 5.4, SIDING, 0.82)
-  wallZ(DOOR_Z, -DOOR_HW, DOOR_HW, DOOR_H, 5.4, SIDING, 0.82)
+  wallZ(DOOR_Z, -FW, -DOOR_HW, 0, 5.4, SIDING, 0.76)
+  wallZ(DOOR_Z, DOOR_HW, FW, 0, 5.4, SIDING, 0.76)
+  wallZ(DOOR_Z, -DOOR_HW, DOOR_HW, DOOR_H, 5.4, SIDING, 0.76)
   face([[-FW, 5.4, DOOR_Z], [FW, 5.4, DOOR_Z], [0, 7.3, DOOR_Z]], mix(SIDING, NAVY, 0.3), 0.75) // gable
   stripSlab(-FW - 0.4, DOOR_Z, FW + 0.4, DOOR_Z + 9, 5.4, NAVY_D, 0.7) // roof, seen from the drive
   wallZ(DOOR_Z - 0.1, -FW - 0.5, FW + 0.5, 5.4, 5.64, NAVY, 0.9) // eaves
@@ -160,13 +164,13 @@ export function buildScene(tex = {}) {
   box(-2.7, 25.1, 0.26, 3.1, 0.26, SIDING, 0.44)
   box(2.7, 25.1, 0.26, 3.1, 0.26, SIDING, 0.44)
   slab(-3.4, 24.7, 3.4, DOOR_Z, 3.62, mix(SIDING, NAVY, 0.45), 0.6)
-  wallZ(24.68, -3.4, 3.4, 3.5, 3.78, SIDING, 0.82)
+  wallZ(24.68, -3.4, 3.4, 3.5, 3.78, SIDING, 0.74)
 
   // windows, lit from inside
   for (const wx of [-5.9, -3.6, 3.6, 5.9]) {
     const half = 0.78
     wallZ(DOOR_Z - 0.05, wx - half - 0.1, wx + half + 0.1, 1.15, 3.15, mix(SIDING, NAVY, 0.45), 0.8)
-    wallZ(DOOR_Z - 0.06, wx - half, wx + half, 1.25, 3.05, WARM, 1, { glow: 0.85 })
+    wallZ(DOOR_Z - 0.06, wx - half, wx + half, 1.25, 3.05, LIT, 0.86, { glow: 0.3 })
   }
 
   // the open door, and the light it throws down the steps
@@ -178,7 +182,7 @@ export function buildScene(tex = {}) {
   wallZ(DOOR_Z - 0.02, -DOOR_HW - 0.14, -DOOR_HW, 0, DOOR_H + 0.14, mix(SIDING, RED, 0.2), 0.85)
   wallZ(DOOR_Z - 0.02, DOOR_HW, DOOR_HW + 0.14, 0, DOOR_H + 0.14, mix(SIDING, RED, 0.2), 0.85)
   wallZ(DOOR_Z - 0.02, -DOOR_HW - 0.14, DOOR_HW + 0.14, DOOR_H, DOOR_H + 0.14, mix(SIDING, RED, 0.2), 0.85)
-  slab(-1.5, 24.4, 1.5, DOOR_Z, 0.455, mix(WARM, [70, 58, 50], 0.3), 1, { glow: 0.22 })
+  slab(-1.5, 24.4, 1.5, DOOR_Z, 0.455, mix(LIT, [70, 58, 50], 0.42), 1, { glow: 0.12 })
 
   /* ---- inside: the hall, then the living room ---- */
   const HALL_HW = 2.6, HALL_END = 38, ROOM_HW = 5.6, ROOM_END = 52
@@ -193,7 +197,7 @@ export function buildScene(tex = {}) {
   // runner, hall table, a lamp on it
   stripSlab(-1.1, DOOR_Z + 1, 1.1, HALL_END - 2, 0, mix(NAVY, WHITE, 0.15), 0.95)
   box(-2.1, 31, 0.5, 0.78, 1.3, WOOD_D, 0)
-  box(-2.1, 31, 0.26, 0.42, 0.26, WARM, 0.78)
+  box(-2.1, 31, 0.26, 0.42, 0.26, LIT, 0.78)
 
   // pictures down the hall
   for (const z of [29, 32.5, 35.5]) {
@@ -204,7 +208,7 @@ export function buildScene(tex = {}) {
   // ceiling lights
   for (const z of [30, 35, 41, 47]) {
     const hw = z < HALL_END ? 0.5 : 0.8
-    slab(-hw, z, hw, z + 0.5, z < HALL_END ? 2.93 : 3.28, WARM, 1, { glow: 0.7 })
+    slab(-hw, z, hw, z + 0.5, z < HALL_END ? 2.93 : 3.28, LIT, 0.9, { glow: 0.34 })
   }
 
   floorAround(-ROOM_HW, HALL_END, ROOM_HW, ROOM_END, 0, WOOD, 0.92, [-4.1, 44, 4.1, 51])
@@ -242,7 +246,7 @@ export function buildScene(tex = {}) {
     box(cx, cz, w, 0.05, d, mix(WOOD, WHITE, 0.15), h)      // the top
     for (const [dx, dz, iw, ih, id, col, lit] of items) {
       box(cx + dx, cz + dz, iw, ih, id, col, h + 0.05)
-      if (lit) box(cx + dx, cz + dz, iw * 0.72, 0.04, id * 0.72, WARM, h + 0.05 + ih)
+      if (lit) box(cx + dx, cz + dz, iw * 0.72, 0.04, id * 0.72, LIT, h + 0.05 + ih)
     }
     tag(cx + w * 0.28, cz - d / 2, h - 0.06)
   }
@@ -287,9 +291,9 @@ export function buildScene(tex = {}) {
   box(CHK.x, CHK.z, CHK.w + 0.06, 0.05, CHK.d + 0.06, mix(NAVY, WHITE, 0.12), CHK.h)
   box(CHK.x - 0.75, CHK.z - 0.1, 0.4, 0.22, 0.3, mix(WOOD_D, WHITE, 0.2), 0.85)  // cash box
   box(CHK.x + 0.1, CHK.z + 0.05, 0.5, 0.06, 0.36, WHITE, 0.85)                   // tag stock
-  box(CHK.x + 0.75, CHK.z - 0.05, 0.3, 0.36, 0.3, WARM, 0.85)                    // lamp
+  box(CHK.x + 0.75, CHK.z - 0.05, 0.3, 0.36, 0.3, LIT, 0.85)                     // lamp
   displayTable(2.4, 42.2, 1.6, 0.9, [
-    [-0.5, 0.05, 0.34, 0.28, 0.24, WARM, true],                // lamp, lit
+    [-0.5, 0.05, 0.34, 0.28, 0.24, LIT, true],                 // lamp, lit
     [0, -0.1, 0.4, 0.12, 0.3, mix(BONE, WHITE, 0.5)],          // stacked china
     [0, -0.1, 0.34, 0.1, 0.26, mix(BONE, WHITE, 0.7)],
     [0.5, 0.08, 0.24, 0.36, 0.24, mix(NAVY, WHITE, 0.15)],
@@ -303,13 +307,13 @@ export function buildScene(tex = {}) {
   // glass case for the small valuable things, lit from within
   box(4.6, 44.6, 0.75, 0.85, 1.8, WOOD_D, 0)
   box(4.6, 44.6, 0.7, 0.5, 1.72, mix(NAVY, WARM, 0.25), 0.85)
-  wallZ(43.72, 4.3, 4.9, 0.95, 1.3, WARM, 1, { glow: 0.5 })
+  wallZ(43.72, 4.3, 4.9, 0.95, 1.3, LIT, 0.9, { glow: 0.24 })
   box(4.6, 44.6, 0.74, 0.05, 1.76, mix(BONE, WHITE, 0.6), 1.35)
   tag(4.6, 43.7, 0.8)
 
   // sideboard under the window, lamps on it
   box(-4.85, 41.4, 0.55, 0.9, 1.9, WOOD_D, 0)
-  box(-4.85, 40.9, 0.3, 0.42, 0.3, WARM, 0.9)
+  box(-4.85, 40.9, 0.3, 0.42, 0.3, LIT, 0.9)
   box(-4.85, 42, 0.26, 0.34, 0.26, mix(NAVY, WHITE, 0.3), 0.9)
   tag(-4.6, 40.45, 0.84)
 
@@ -319,7 +323,7 @@ export function buildScene(tex = {}) {
   wallX(-ROOM_HW + 0.06, 49.25, 49.6, 0.6, 2.7, LINEN, 0.72)
 
   box(-4.7, 46.6, 0.5, 1.45, 0.5, WOOD_D, 0) // floor lamp
-  box(-4.7, 46.6, 0.34, 0.42, 0.34, WARM, 1.45)
+  box(-4.7, 46.6, 0.34, 0.42, 0.34, LIT, 1.45)
 
   // bookcase, shelves loaded and tagged
   box(4.9, 46.8, 0.6, 2.1, 2.4, WOOD_D, 0)
@@ -331,9 +335,9 @@ export function buildScene(tex = {}) {
   }
 
   // fireplace wall: mantel dressed, mirror above, art either side
-  box(0, 51.5, 2.8, 1.4, 0.7, mix(INT_WALL, WHITE, 0.5), 0)
-  wallZ(51.14, -0.85, 0.85, 0.15, 1.05, WARM, 1, { glow: 0.8 })
-  box(0, 51.5, 3.2, 0.12, 0.85, mix(INT_WALL, WHITE, 0.35), 1.4)
+  box(0, 51.5, 2.8, 1.4, 0.7, mix(INT_WALL, WHITE, 0.3), 0)
+  wallZ(51.14, -0.85, 0.85, 0.15, 1.05, LIT, 0.95, { glow: 0.4 })
+  box(0, 51.5, 3.2, 0.12, 0.85, mix(INT_WALL, WHITE, 0.22), 1.4)
   box(-1.15, 51.4, 0.12, 0.42, 0.12, mix(WOOD, WHITE, 0.45), 1.52) // candlesticks
   box(-0.92, 51.4, 0.1, 0.32, 0.1, mix(WOOD, WHITE, 0.45), 1.52)
   box(1.1, 51.4, 0.26, 0.34, 0.26, mix(NAVY, WHITE, 0.25), 1.52) // vase
@@ -350,7 +354,7 @@ export function buildScene(tex = {}) {
   // pendant lights over the tables — the pin-spots that make a sale look staged
   for (const [x, z] of [[-2.5, 42.6], [2.4, 42.2], [0, 48.4]]) {
     box(x, z, 0.06, 0.55, 0.06, WOOD_D, 2.75)
-    slab(x - 0.22, z - 0.22, x + 0.22, z + 0.22, 2.75, WARM, 1, { glow: 0.55 })
+    slab(x - 0.22, z - 0.22, x + 0.22, z + 0.22, 2.75, LIT, 0.95, { glow: 0.26 })
   }
 
   // crated and boxed lots, still being carried through
@@ -452,7 +456,7 @@ export function drawList(faces, cam, view) {
 
     const t = clamp((depth - fogStart) / (fogEnd - fogStart))
     const lit = fc.glow ? 1 : fc.shade * lerp(1, 0.82, clamp(depth / 40))
-    const col = mix(fc.col.map((c) => c * lit), fog, fc.glow ? t * 0.35 : t)
+    const col = mix(fc.col.map((c) => c * lit), fog, fc.glow ? t * 0.62 : t)
     items.push({ scr, col, depth, tex: fc.tex, glow: fc.glow, box: [minX, minY, maxX, maxY] })
   }
 

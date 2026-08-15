@@ -137,10 +137,10 @@ export default function CineHero() {
         if (it.glow) {
           const [x0, y0, x1, y1] = it.box
           const mx = (x0 + x1) / 2, my = (y0 + y1) / 2
-          const r = Math.max(x1 - x0, y1 - y0) * 1.7
+          const r = Math.max(x1 - x0, y1 - y0) * 1.35
           const rg = ctx.createRadialGradient(mx, my, 0, mx, my, r)
-          rg.addColorStop(0, `rgba(255,206,140,${0.45 * it.glow})`)
-          rg.addColorStop(1, 'rgba(255,206,140,0)')
+          rg.addColorStop(0, `rgba(236,190,132,${0.34 * it.glow})`)
+          rg.addColorStop(1, 'rgba(236,190,132,0)')
           ctx.globalCompositeOperation = 'lighter'
           ctx.fillStyle = rg
           ctx.fillRect(mx - r, my - r, r * 2, r * 2)
