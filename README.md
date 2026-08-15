@@ -82,14 +82,19 @@ phone clip only makes the grain look deliberate. To rebuild after a re-shoot:
 # (to ~3.5s), or the house small behind a tree over an empty driveway (to ~8s).
 START=9.0
 
-# The paint. Flatten into areas, correct the tungsten cast the rooms were shot
-# under, step the brightness, then blur those steps back into gradients — the
-# posterize decides where tone changes, the blur decides how abruptly.
-FILL="bilateral=sigmaS=24:sigmaR=0.18,bilateral=sigmaS=12:sigmaR=0.10,\
+# The paint. Three bilateral passes, widest first, each one merging what the
+# last left: a grey wall ends up ONE grey rather than fifty near-greys. Then
+# the chroma planes are blurred hard so a region settles on a single colour,
+# the tungsten cast the rooms were shot under is corrected, and the brightness
+# is stepped.
+FILL="bilateral=sigmaS=30:sigmaR=0.25,bilateral=sigmaS=20:sigmaR=0.16,\
+bilateral=sigmaS=12:sigmaR=0.10,\
+format=yuv444p,gblur=sigma=12:planes=6,\
 colorbalance=rm=-0.06:bm=0.08:rh=-0.03:bh=0.04,\
-lutyuv=y='clip(round(val/24)*24,24,236)',gblur=sigma=3.4,\
+lutyuv=y='clip(round(val/40)*40,24,236)',gblur=sigma=0.8:planes=1,\
+vibrance=intensity=-0.4,\
 colorlevels=romin=0.09:gomin=0.09:bomin=0.09,\
-eq=saturation=1.35:contrast=1.03:brightness=0.02,format=gbrp"
+eq=saturation=1.6:contrast=1.03:brightness=0.02,format=gbrp"
 
 # The ink, off its own lightly-smoothed branch so the blur above never touches
 # it: soft colour, hard line.
@@ -133,7 +138,7 @@ What each part is doing, and why it is in that order:
   cartoon or a smear, and it took the longest to see. The heavy bilateral is
   what makes the fills read as painted areas — and it erases, before any
   detector sees them, exactly the boundaries the outlines are supposed to draw.
-  So the fill branch gets `sigmaS=24` twice over and the ink branch gets
+  So the fill branch gets three widening passes and the ink branch gets
   `sigmaS=8` once. Turning the flattening up while the ink shared it is what
   kept dissolving the settee.
 - **the outline is taken from colour as well as brightness.** `edgedetect` works
@@ -144,12 +149,25 @@ What each part is doing, and why it is in that order:
   what got the back of the sofa to come out.
 - **three `erosion` passes** — each one fattens the black lines by a pixel.
   Hairlines read as a filter; 3–4px lines read as drawn.
-- **`gblur=sigma=3.4` right after the posterize** — this pair is the whole
-  colour treatment. The posterize decides *where* tone changes; the blur decides
-  how abruptly. Alone, the posterize gives hard-edged cel steps, which read as
-  banding on a wall. Blurred back out, the same steps become soft gradients that
-  still change where a painter would have changed them. It only touches the fill
-  branch, so the lines stay hard: soft colour, hard ink.
+- **three bilateral passes, widest first.** One pass flattens texture; three,
+  each merging what the last one left, flatten whole *regions* — which is the
+  difference between a wall made of fifty near-greys and a wall that is one
+  grey. This is what makes it read as drawn rather than as processed, and it is
+  worth reaching for before any of the more obvious knobs.
+- **`gblur=sigma=12:planes=6` — the chroma planes only.** Brightness carries the
+  shapes; colour only has to say what something is made of. Blurring hue and
+  saturation across a region, while leaving luma alone, settles each area on a
+  single colour without softening a single edge. `vibrance=-0.4` finishes the
+  job on the near-neutrals, so grey goes properly grey instead of faintly pink
+  in one corner and faintly blue in another, and the saturation lift after it
+  keeps the greens and the wood from going with them.
+- **only `sigma=0.8` of luma blur after the posterize.** An earlier version
+  needed `3.4` to hide banding on the walls. It no longer does, and the reason
+  is worth keeping: banding is what you get from posterizing a *gradient*. Once
+  the region is genuinely uniform there are no gradients left to band, so the
+  blur that was compensating for it can come almost all the way back out — and
+  the picture gets simpler and cleaner rather than softer and mushier. Simplify
+  first and you stop needing to blur.
 - **`minterpolate` to 60fps** — see *Frame rate* below.
 - **`colorbalance`** — the rooms were shot under table lamps, and pushing
   saturation on a tungsten cast turns every interior into a wall of orange. It
@@ -158,9 +176,8 @@ What each part is doing, and why it is in that order:
 - **`-g 60 -keyint_min 60 -sc_threshold 0`** — a keyframe every second. Scrolling
   back up is the one case that has to seek, and seeks land on keyframes.
 
-Smooth gradients and small frame-to-frame deltas both compress well, so 60fps
-costs far less than doubling the frames suggests — 3.5MB / 1.4MB, only 13% over
-the same encode at 30.
+Flat regions and small frame-to-frame deltas both compress well, so 60fps costs
+far less than doubling the frames suggests — 3.7MB / 1.4MB.
 
 ### Frame rate
 
