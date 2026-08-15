@@ -34,12 +34,18 @@ export default function CineHero() {
 
     let dirty = true
 
-    /* ---- the sign artwork, painted once into an offscreen canvas ----
+    /* ---- the sign artwork, painted into an offscreen canvas ----
        The board is parallel to the screen, so its projection is always an
-       upright rectangle and the artwork can be blitted straight in. */
+       upright rectangle and the artwork can be blitted straight in.
+
+       The mark itself is the real logo (public/media/logo.png — the business's
+       own artwork, recoloured from the white version to the sign's red and
+       blue), not a redrawing of it, so the first thing you see up the driveway
+       is exactly the logo and not an approximation. */
     const signTex = document.createElement('canvas')
     signTex.width = 460
     signTex.height = 320
+    const logo = new Image()
     const drawSign = () => {
       const c = signTex.getContext('2d')
       const W = signTex.width, H = signTex.height
@@ -47,47 +53,64 @@ export default function CineHero() {
       c.fillStyle = '#fff'
       c.fillRect(0, 0, W, H)
       c.strokeStyle = '#0d2a55'
-      c.lineWidth = 6
-      c.strokeRect(3, 3, W - 6, H - 6)
+      c.lineWidth = 5
+      c.strokeRect(4, 4, W - 8, H - 8)
 
-      // house-and-magnifier mark
-      c.strokeStyle = '#c20e1f'
-      c.lineWidth = 13
-      c.lineJoin = 'round'
-      c.beginPath()
-      c.moveTo(34, 104); c.lineTo(84, 62); c.lineTo(134, 104); c.lineTo(134, 152); c.lineTo(34, 152); c.closePath()
-      c.stroke()
-      c.beginPath(); c.arc(78, 112, 22, 0, Math.PI * 2); c.stroke()
-      c.lineCap = 'round'
-      c.beginPath(); c.moveTo(94, 128); c.lineTo(116, 150); c.stroke()
-
-      c.textBaseline = 'alphabetic'
-      c.fillStyle = '#0d55a8'
-      c.font = 'bold 84px "Hanken Grotesk", system-ui, sans-serif'
-      c.fillText('LOOK', 152, 132)
-      c.fillStyle = '#0d2a55'
-      c.font = 'bold 44px "Hanken Grotesk", system-ui, sans-serif'
-      c.fillText('ESTATE SALES', 36, 196)
+      if (logo.complete && logo.naturalWidth) {
+        const lw = W - 60
+        c.drawImage(logo, 30, 44, lw, (lw * logo.naturalHeight) / logo.naturalWidth)
+      }
 
       c.fillStyle = '#c20e1f'
-      c.fillRect(28, 216, W - 56, 58)
+      c.fillRect(28, 224, W - 56, 60)
       c.fillStyle = '#fff'
       c.font = 'bold 34px "Hanken Grotesk", system-ui, sans-serif'
-      c.fillText(SITE.phone, 116, 256)
+      c.textAlign = 'center'
+      c.textBaseline = 'middle'
+      c.fillText(SITE.phone, W / 2, 255)
     }
+    logo.onload = () => { drawSign(); dirty = true }
+    logo.src = './media/logo.png'
     drawSign()
-    // the board is painted before the webfont lands; repaint when it does
-    if (document.fonts?.ready) document.fonts.ready.then(() => { drawSign(); dirty = true })
+    /* The phone number is painted before the webfont lands, and the webfont
+       also changes the beat boxes — so repaint the board and re-measure. */
+    if (document.fonts?.ready) document.fonts.ready.then(() => { drawSign(); size() })
 
-    const faces = buildScene(signTex)
+    /* ---- the branded table cover on the checkout table ----
+       Straight out of the reference clip's closing shot: a fitted navy cover
+       with the logo across the front. Same artwork, on-navy colourway. */
+    const coverTex = document.createElement('canvas')
+    coverTex.width = 616
+    coverTex.height = 200
+    const coverLogo = new Image()
+    const drawCover = () => {
+      const c = coverTex.getContext('2d')
+      c.fillStyle = '#08234e'
+      c.fillRect(0, 0, coverTex.width, coverTex.height)
+      if (coverLogo.complete && coverLogo.naturalWidth) {
+        const lw = coverTex.width * 0.78
+        const lh = (lw * coverLogo.naturalHeight) / coverLogo.naturalWidth
+        c.drawImage(coverLogo, (coverTex.width - lw) / 2, (coverTex.height - lh) / 2, lw, lh)
+      }
+    }
+    coverLogo.onload = () => { drawCover(); dirty = true }
+    coverLogo.src = './media/logo-onnavy.png'
+    drawCover()
+
+    const faces = buildScene({ sign: signTex, cover: coverTex })
 
     /* ---- canvas ---- */
     let view = viewFor(window.innerWidth, window.innerHeight, 1)
+    /* Unscaled beat sizes, measured once per layout: the shade pool under each
+       beat needs its box, and reading it every frame would mean a forced layout
+       on every frame. The transform scale is applied to these numbers instead. */
+    let sizes = []
     const size = () => {
       const r = cvs.getBoundingClientRect()
       view = viewFor(r.width || window.innerWidth, r.height || window.innerHeight, Math.min(window.devicePixelRatio || 1, 2))
       cvs.width = view.W
       cvs.height = view.H
+      sizes = beatEls.map((el) => [el.offsetWidth, el.offsetHeight])
       dirty = true
     }
 
@@ -147,6 +170,31 @@ export default function CineHero() {
           el.style.visibility = 'hidden'
           continue
         }
+
+        /* A pool of shade under the copy, painted into the scene at the beat's
+           own position and size. Text shadows alone can't carry white type over
+           a lit facade or a lamp-lit wall; this can, and because it scales and
+           fades with the beat it stays part of the shot rather than reading as
+           a panel pasted over it. */
+        const [bw, bh] = sizes[i] || [0, 0]
+        if (bw) {
+          const rx = bw * b.scale * 0.82 * view.dpr
+          const ry = bh * b.scale * 1.15 * view.dpr
+          ctx.save()
+          ctx.globalAlpha = b.opacity
+          ctx.translate(b.x * view.dpr, b.y * view.dpr)
+          ctx.scale(rx, ry)
+          const hg = ctx.createRadialGradient(0, 0, 0, 0, 0, 1)
+          hg.addColorStop(0, 'rgba(3,11,26,0.82)')
+          hg.addColorStop(0.45, 'rgba(3,11,26,0.62)')
+          hg.addColorStop(1, 'rgba(3,11,26,0)')
+          ctx.fillStyle = hg
+          ctx.beginPath()
+          ctx.arc(0, 0, 1, 0, 6.2832)
+          ctx.fill()
+          ctx.restore()
+        }
+
         el.style.opacity = b.opacity.toFixed(3)
         el.style.visibility = 'visible'
         el.style.transform =

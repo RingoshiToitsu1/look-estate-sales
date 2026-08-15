@@ -90,6 +90,12 @@ Two gotchas worth knowing before editing the scene:
   only sees about ±0.86 × distance sideways — so furniture meant to be visible
   in the final frame has to sit deeper in the room than a floor plan suggests.
 
+Two textures are painted in the browser and blitted onto faces that sit square
+to the camera (`CineHero.jsx`): the yard sign at the top of the driveway, and
+the branded cover on the checkout table inside. Both use the business's own
+logo — `public/media/logo.png` for the white board and `logo-onnavy.png` for the
+table cover — recoloured from the site's white PNG, not redrawn.
+
 `media-src/hero.mp4` is the reference walkthrough the scene recreates. It lives
 outside `public/`, so it stays in the repo but is never shipped to the browser.
 

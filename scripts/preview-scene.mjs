@@ -47,7 +47,7 @@ const clipRect = (pts, w, h) => {
   return poly
 }
 
-const faces = buildScene(null)
+const faces = buildScene({})
 const view = viewFor(PW, PH, 1)
 const panels = []
 

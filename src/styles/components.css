@@ -138,6 +138,15 @@
   position: relative;
   background: var(--navy-3);
   color: #fff;
+  /* Copy sits over whatever the camera is pointed at — a lit facade, a lamp-lit
+     wall — so it carries its own contrast: a tight dark edge to hold the
+     letterforms, then two wider washes. The canvas paints a pool of shade
+     behind each beat as well (see CineHero); the two together are what make
+     white type readable everywhere along the walk. */
+  --cine-shadow:
+    0 1px 2px rgba(2, 8, 20, 0.62),
+    0 2px 10px rgba(2, 8, 20, 0.78),
+    0 8px 34px rgba(2, 8, 20, 0.72);
 }
 .cine__stage {
   position: relative;
@@ -204,13 +213,13 @@
   letter-spacing: -0.022em;
   font-weight: 500;
   max-width: 16ch;
-  text-shadow: 0 6px 40px rgba(3, 14, 34, 0.75);
+  text-shadow: var(--cine-shadow);
 }
 .cine__sub {
   max-width: 44ch;
   font-size: clamp(1.02rem, 0.98rem + 0.4vw, 1.28rem);
-  color: rgba(255,255,255,0.92);
-  text-shadow: 0 3px 24px rgba(3, 14, 34, 0.8);
+  color: rgba(255,255,255,0.94);
+  text-shadow: var(--cine-shadow);
 }
 .cine__lead {
   font-family: var(--font-display);
@@ -219,18 +228,18 @@
   line-height: 1.08;
   letter-spacing: -0.018em;
   max-width: 18ch;
-  text-shadow: 0 6px 40px rgba(3, 14, 34, 0.78);
+  text-shadow: var(--cine-shadow);
 }
 .cine__lead--big { font-size: clamp(2.2rem, 1.2rem + 4.6vw, 4.6rem); }
-.cine__lead b { color: var(--blue-lite); font-weight: 500; }
+.cine__lead b { color: #a9d6ff; font-weight: 500; }
 .cine__note,
 .cine__cue {
   font-family: var(--font-mono);
   font-size: 0.72rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.72);
-  text-shadow: 0 2px 18px rgba(3, 14, 34, 0.9);
+  color: rgba(255,255,255,0.86);
+  text-shadow: var(--cine-shadow);
 }
 .cine__cue {
   display: block;
