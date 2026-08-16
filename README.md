@@ -74,6 +74,13 @@ viewport width) and `walk-poster.jpg` for first paint. It is not a colour grade
 — the footage is redrawn as an illustration, because grading a grainy handheld
 phone clip only makes the grain look deliberate.
 
+`media-src/` is **not** in git. The clip went 4K when the footage was replaced
+and a 4K source is comfortably over GitHub's 100MB per-file limit, so the repo
+carries only the re-encodes the page actually serves. Nothing in the build needs
+the source — but `scripts/rebuild-walk.sh` does, so keep the original somewhere
+you can find it. A fresh clone cannot re-cut the footage until you put a clip
+back at `media-src/hero.mp4` (or pass one as the script's first argument).
+
 ### Replacing the footage
 
 ```bash
