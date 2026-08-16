@@ -81,6 +81,33 @@ the source — but `scripts/rebuild-walk.sh` does, so keep the original somewher
 you can find it. A fresh clone cannot re-cut the footage until you put a clip
 back at `media-src/hero.mp4` (or pass one as the script's first argument).
 
+### Size and quality
+
+`walk.mp4` is 1920 wide and `walk-sm.mp4` is 1280, at crf 26 and 29 with x264's
+`-tune animation`. That is a much bigger file than the 1024-wide crf-34 cut it
+replaced — about 25MB against 2.5MB — and the reason is that the stage is
+`object-fit: cover` over the whole viewport, so whatever the file's width is, it
+gets stretched to the window's. At 1024 that was a 2x upscale on an ordinary
+laptop, which is what made the drawing look soft and the sign unreadable.
+
+The knobs are environment variables, so trading quality for weight does not mean
+editing the chain:
+
+```bash
+OUT_W=1600 CRF=28 SM_CRF=31 scripts/rebuild-walk.sh media-src/hero.mp4 0
+```
+
+`-tune animation` is worth keeping whatever else changes: it is built for flat,
+hard-edged pictures like this one, and at 1920 it makes crf 26 look like crf 19
+did at a third of the bytes.
+
+Two things about the filter chain are easy to get wrong. The bilateral `sigmaS`
+values and the blur sigmas are in **pixels**, so they do not mean the same thing
+at 1920 that they meant at 1024 — raising the width without raising them turns
+the flat-region look into a much busier one. And `erosion` in the ink pass grows
+the black line: three passes at 1024 is what turned every outline into a chain
+of blobs, and one is enough.
+
 ### Replacing the footage
 
 ```bash

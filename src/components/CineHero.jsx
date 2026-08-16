@@ -151,8 +151,8 @@ export default function CineHero() {
       el.style.top = `${BEATS[i].y}%`
     })
 
-    /* A phone gets the 640-wide cut: a third of the weight, into a frame a
-       third of the size. */
+    /* A phone gets the 1280-wide cut: under a third of the weight, and still
+       enough for a 400px-wide screen at DPR 3, which is asking for 1200. */
     v.src = window.innerWidth < 760 ? './media/walk-sm.mp4' : './media/walk.mp4'
     v.load()
 

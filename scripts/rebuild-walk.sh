@@ -55,35 +55,70 @@ else
   echo "interpolating ${SRC_FPS} -> 60fps (this is most of the encode time)"
 fi
 
+# ---- how big, and how good ----
+# The stage is `object-fit: cover` over the whole viewport, so the file is
+# stretched to the window's width no matter what it is. At 1024 that was a 2x
+# upscale on an ordinary laptop and it looked it. 1920 lands 1:1 on the common
+# desktop and is a soft 1.33x on a 2560 panel, which is the forgiving direction.
+# The phone cut is 1280 because a 400px-wide phone at DPR 3 is asking for 1200.
+OUT_W=${OUT_W:-1920}
+SM_W=${SM_W:-1280}
+# -tune animation is not decoration: it is built for exactly this kind of
+# flat-region, hard-edged picture, and it buys most of the file back. At 1920
+# crf 26 tuned is indistinguishable from crf 19 untuned on a 2x blowup of the
+# sign, at a third of the bytes.
+CRF=${CRF:-26}
+SM_CRF=${SM_CRF:-29}
+
 # ---- the drawing ----
-FILL="bilateral=sigmaS=30:sigmaR=0.25,bilateral=sigmaS=20:sigmaR=0.16,\
-bilateral=sigmaS=12:sigmaR=0.10,\
-format=yuv444p,gblur=sigma=12:planes=6,\
+# sigmaS and the blur sigmas below are in PIXELS, so they do not mean the same
+# thing at 1920 that they meant at 1024. They are scaled up to hold the flat-
+# region look, but deliberately under-scaled: covering slightly less picture
+# than before is what lets the brick coursing and the window frames survive
+# instead of melting into the wall.
+FILL="bilateral=sigmaS=40:sigmaR=0.20,bilateral=sigmaS=26:sigmaR=0.13,\
+bilateral=sigmaS=16:sigmaR=0.09,\
+format=yuv444p,gblur=sigma=10:planes=6,\
 colorbalance=rm=-0.06:bm=0.08:rh=-0.03:bh=0.04,\
-lutyuv=y='clip(round(val/40)*40,24,236)',gblur=sigma=0.8:planes=1,\
-vibrance=intensity=-0.4,\
-colorlevels=romin=0.09:gomin=0.09:bomin=0.09,\
-eq=saturation=1.6:contrast=1.03:brightness=0.02,format=gbrp"
+lutyuv=y='clip(round(val/28)*28,20,240)',gblur=sigma=0.6:planes=1,\
+vibrance=intensity=-0.3,\
+colorlevels=romin=0.07:gomin=0.07:bomin=0.07,\
+eq=saturation=1.55:contrast=1.05:brightness=0.015,format=gbrp"
 
-INK="bilateral=sigmaS=8:sigmaR=0.07,format=yuv444p,extractplanes=y+u+v[ey][eu][ev];\
-[ey]gblur=sigma=0.7,edgedetect=low=0.022:high=0.07[ly];\
-[eu]gblur=sigma=0.7,edgedetect=low=0.018:high=0.05[lu];\
-[ev]gblur=sigma=0.7,edgedetect=low=0.018:high=0.05[lv];\
+# One erosion, where there used to be three. Erosion grows the black line, and
+# three of them at 1024 was what turned every outline into a chain of blobs and
+# made the sign unreadable. At this width the detected edge is already a real
+# line; one pass just gives it enough weight to read as drawn rather than wiry.
+INK="bilateral=sigmaS=10:sigmaR=0.06,format=yuv444p,extractplanes=y+u+v[ey][eu][ev];\
+[ey]gblur=sigma=0.6,edgedetect=low=0.02:high=0.06[ly];\
+[eu]gblur=sigma=0.6,edgedetect=low=0.016:high=0.045[lu];\
+[ev]gblur=sigma=0.6,edgedetect=low=0.016:high=0.045[lv];\
 [ly][lu]blend=all_mode=lighten[l1];\
-[l1][lv]blend=all_mode=lighten,negate,erosion,erosion,erosion,format=gbrp[ink]"
+[l1][lv]blend=all_mode=lighten,negate,erosion,format=gbrp[ink]"
 
-DRAW="${RATE_STEP},scale=1024:-2,hqdn3d=14:20:20:26,split[forfill][foredge];\
+# hqdn3d was 14:20:20:26, which is a lot of denoise for a 4K source and took
+# the detail with the grain. Some is still wanted — it runs ahead of the edge
+# detect, and grain the detector can see becomes ink it draws.
+DRAW="${RATE_STEP},scale=${OUT_W}:-2:flags=lanczos,hqdn3d=6:8:8:10,split[forfill][foredge];\
 [forfill]${FILL}[c];\
 [foredge]${INK};\
 [c][ink]blend=all_mode=multiply:all_opacity=1.0,format=yuv420p"
 
 mkdir -p public/media
-echo "drawing..."
+echo "drawing at ${OUT_W}w (crf ${CRF}) and ${SM_W}w (crf ${SM_CRF})..."
+# The phone cut is a downscale of the DRAWN picture, not a second drawing, so
+# both cuts are the same artwork and the ink thins with the frame rather than
+# being redrawn at a size it was never tuned for.
+# GOP is 30, down from 60: scrolling back up is the one move that forces a real
+# seek, and a half-second keyframe interval halves what has to be decoded to
+# satisfy it.
 $FF -y -v warning -stats -ss "$START" -i "$SRC" \
-  -filter_complex "[0:v]${DRAW},split[big][small];[small]scale=640:-2[sm]" \
-  -map "[big]" -an -c:v libx264 -preset slow -crf 34 -g 60 -keyint_min 60 \
+  -filter_complex "[0:v]${DRAW},split[big][small];[small]scale=${SM_W}:-2:flags=lanczos[sm]" \
+  -map "[big]" -an -c:v libx264 -preset slow -tune animation -crf "$CRF" \
+    -profile:v high -g 30 -keyint_min 30 \
     -sc_threshold 0 -pix_fmt yuv420p -movflags +faststart public/media/walk.mp4 \
-  -map "[sm]" -an -c:v libx264 -preset slow -crf 35 -g 60 -keyint_min 60 \
+  -map "[sm]" -an -c:v libx264 -preset slow -tune animation -crf "$SM_CRF" \
+    -profile:v high -g 30 -keyint_min 30 \
     -sc_threshold 0 -pix_fmt yuv420p -movflags +faststart public/media/walk-sm.mp4
 
 $FF -y -v error -i public/media/walk.mp4 -frames:v 1 -q:v 2 public/media/walk-poster.jpg
