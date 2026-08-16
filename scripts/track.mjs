@@ -20,10 +20,15 @@ import { execFileSync } from 'node:child_process'
 import { writeFileSync, mkdirSync } from 'node:fs'
 
 const FF = process.env.FFMPEG || 'ffmpeg'
-const SRC = 'media-src/hero.mp4'
+/* The footage to measure. It must be the same footage the page ends up
+   playing, which since stabilisation means the STABILISED intermediate, not the
+   camera original — the whole point of stabilising is that the camera no longer
+   goes where it went, and copy pinned to the old path would drift against the
+   picture. rebuild-walk.sh passes this; the default is the stabiliser's output. */
+const SRC = process.env.WALK_SRC || 'media-src/hero-stab.mp4'
 const START = Number(process.env.WALK_START ?? 9.0)
 const W = 160, H = 90            // tracking resolution
-const OUT = 'src/data/track.js'
+const OUT = process.env.WALK_TRACK_OUT || 'src/data/track.js'
 
 /* ---- decode the whole clip as raw grey ---- */
 const raw = execFileSync(FF, [

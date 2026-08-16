@@ -55,6 +55,51 @@ else
   echo "interpolating ${SRC_FPS} -> 60fps (this is most of the encode time)"
 fi
 
+# ---- stabilisation ----
+# The clip is shot walking, so every footfall is in it. libvidstab measures the
+# camera's real path in one pass and re-renders it along a smoothed version of
+# that path in a second, which keeps the walk toward the house and drops the
+# bounce that came with it.
+#
+# It renders to an intermediate file rather than running inline, because the
+# drawing is not the only thing that has to see these frames: track.mjs measures
+# the camera path for the copy, and it has to measure the path the page actually
+# plays. Two consumers of one filter string, kept in sync by hand, is the same
+# trap START used to be. One file, both read it.
+#
+# STAB_W is above OUT_W on purpose. Stabilising costs picture: the frame is
+# zoomed in far enough that no shot swings a border into view. Doing that at
+# 2560 and delivering 1920 pays for the crop out of headroom that was going to
+# be thrown away in the downscale anyway, so it costs nothing visible.
+STABILIZE=${STABILIZE:-1}
+STAB_W=${STAB_W:-2560}
+# In frames, each direction, at 60fps — so 60 is a full second either side.
+# Lower leaves footfalls in; much higher starts smoothing away the walk itself.
+STAB_SMOOTHING=${STAB_SMOOTHING:-60}
+STAB=media-src/hero-stab.mp4
+TRF=media-src/hero.trf
+
+DRAW_SRC=$SRC
+if [ "$STABILIZE" = "0" ]; then
+  echo "stabilisation off (STABILIZE=0)"
+elif [ -f "$STAB" ] && [ "$STAB" -nt "$SRC" ] && [ -z "${STAB_FORCE:-}" ]; then
+  echo "reusing $STAB (newer than the source; STAB_FORCE=1 to redo)"
+  DRAW_SRC=$STAB
+else
+  # mincontrast is deliberately not lower than this. Dropping it to 0.1 lets the
+  # detector lock onto film grain instead of corners, and the result measured
+  # WORSE than not stabilising at all.
+  echo "stabilising, pass 1/2 (measuring the camera path)..."
+  $FF -y -v warning -stats -i "$SRC" \
+    -vf "scale=${STAB_W}:-2:flags=lanczos,vidstabdetect=shakiness=8:accuracy=15:stepsize=6:mincontrast=0.2:result=${TRF}" \
+    -f null -
+  echo "stabilising, pass 2/2 (re-rendering along the smoothed path)..."
+  $FF -y -v warning -stats -i "$SRC" \
+    -vf "scale=${STAB_W}:-2:flags=lanczos,vidstabtransform=input=${TRF}:smoothing=${STAB_SMOOTHING}:optzoom=1:interpol=bicubic:crop=black" \
+    -an -c:v libx264 -preset fast -crf 16 -pix_fmt yuv420p "$STAB"
+  DRAW_SRC=$STAB
+fi
+
 # ---- how big, and how good ----
 # The stage is `object-fit: cover` over the whole viewport, so the file is
 # stretched to the window's width no matter what it is. At 1024 that was a 2x
@@ -112,7 +157,7 @@ echo "drawing at ${OUT_W}w (crf ${CRF}) and ${SM_W}w (crf ${SM_CRF})..."
 # GOP is 30, down from 60: scrolling back up is the one move that forces a real
 # seek, and a half-second keyframe interval halves what has to be decoded to
 # satisfy it.
-$FF -y -v warning -stats -ss "$START" -i "$SRC" \
+$FF -y -v warning -stats -ss "$START" -i "$DRAW_SRC" \
   -filter_complex "[0:v]${DRAW},split[big][small];[small]scale=${SM_W}:-2:flags=lanczos[sm]" \
   -map "[big]" -an -c:v libx264 -preset slow -tune animation -crf "$CRF" \
     -profile:v high -g 30 -keyint_min 30 \
@@ -125,7 +170,7 @@ $FF -y -v error -i public/media/walk.mp4 -frames:v 1 -q:v 2 public/media/walk-po
 
 # ---- the camera track, from the same START ----
 echo "measuring the camera track..."
-WALK_START=$START FFMPEG=$FF node scripts/track.mjs
+WALK_SRC=$DRAW_SRC WALK_START=$START FFMPEG=$FF node scripts/track.mjs
 
 DUR=$($FP -v error -show_entries format=duration -of csv=p=0 public/media/walk.mp4)
 echo
