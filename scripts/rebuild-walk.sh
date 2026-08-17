@@ -115,50 +115,78 @@ SM_W=${SM_W:-1280}
 CRF=${CRF:-26}
 SM_CRF=${SM_CRF:-29}
 
-# ---- the drawing ----
-# sigmaS and the blur sigmas below are in PIXELS, so they do not mean the same
-# thing at 1920 that they meant at 1024. They are scaled up to hold the flat-
-# region look, but deliberately under-scaled: covering slightly less picture
-# than before is what lets the brick coursing and the window frames survive
-# instead of melting into the wall.
-FILL="bilateral=sigmaS=40:sigmaR=0.20,bilateral=sigmaS=26:sigmaR=0.13,\
-bilateral=sigmaS=16:sigmaR=0.09,\
-format=yuv444p,gblur=sigma=10:planes=6,\
-colorbalance=rm=-0.06:bm=0.08:rh=-0.03:bh=0.04,\
-lutyuv=y='clip(round(val/28)*28,20,240)',gblur=sigma=0.6:planes=1,\
-vibrance=intensity=-0.3,\
-colorlevels=romin=0.07:gomin=0.07:bomin=0.07,\
-eq=saturation=1.55:contrast=1.05:brightness=0.015,format=gbrp"
+# ---- the drawing: watercolour and ink ----
+# The wash. No posterise step anywhere in here, deliberately: quantising luma
+# into bands is what used to turn a real shadow into a hard blotch, and there
+# are no bands in watercolour. The curve lifts the black point to 0.15 so that
+# shadows stay translucent — in a watercolour the darkest thing on the paper is
+# the ink, never a shadow — and the rest of it stays close to linear so bright
+# rooms keep their tonal separation instead of crowding into cream.
+#
+# sigmaS and the blur sigmas are in PIXELS, so they only mean this at 1920.
+WASH="bilateral=sigmaS=30:sigmaR=0.16,bilateral=sigmaS=18:sigmaR=0.10,\
+format=yuv444p,gblur=sigma=8:planes=6,format=gbrp,\
+curves=all='0/0.15 0.25/0.37 0.5/0.57 0.75/0.80 1/0.99',\
+colorbalance=rs=-0.02:bs=0.05:rm=0.02:bm=0.00:rh=0.05:gh=0.015:bh=-0.035,\
+eq=saturation=1.02:contrast=1.05:brightness=0.005,vibrance=intensity=0.14"
 
-# One erosion, where there used to be three. Erosion grows the black line, and
-# three of them at 1024 was what turned every outline into a chain of blobs and
-# made the sign unreadable. At this width the detected edge is already a real
-# line; one pass just gives it enough weight to read as drawn rather than wiry.
+# The luminous part: a blurred highlight pass screened back over the wash. The
+# threshold is high on purpose — bloom everything and an already-bright room
+# goes flat white, which is the failure this setting was tuned against.
+BLOOM="split[b1][b2];\
+[b2]curves=all='0/0 0.6/0.05 0.85/0.45 1/1',gblur=sigma=26[glow];\
+[b1][glow]blend=all_mode=screen:all_opacity=0.18"
+
+# Ink. One erosion for line weight, and the line is lifted off pure black to a
+# warm dark (~51,43,38): ink on paper is never 0,0,0, and true black drawn over
+# a lifted wash is exactly what reads as harsh.
 INK="bilateral=sigmaS=10:sigmaR=0.06,format=yuv444p,extractplanes=y+u+v[ey][eu][ev];\
 [ey]gblur=sigma=0.6,edgedetect=low=0.02:high=0.06[ly];\
 [eu]gblur=sigma=0.6,edgedetect=low=0.016:high=0.045[lu];\
 [ev]gblur=sigma=0.6,edgedetect=low=0.016:high=0.045[lv];\
 [ly][lu]blend=all_mode=lighten[l1];\
-[l1][lv]blend=all_mode=lighten,negate,erosion,format=gbrp[ink]"
+[l1][lv]blend=all_mode=lighten,negate,erosion,format=gbrp,\
+curves=r='0/0.20 1/1':g='0/0.17 1/1':b='0/0.15 1/1'[ink]"
 
-# hqdn3d was 14:20:20:26, which is a lot of denoise for a 4K source and took
-# the detail with the grain. Some is still wanted — it runs ahead of the edge
-# detect, and grain the detector can see becomes ink it draws.
-DRAW="${RATE_STEP},scale=${OUT_W}:-2:flags=lanczos,hqdn3d=6:8:8:10,split[forfill][foredge];\
-[forfill]${FILL}[c];\
+# hqdn3d runs ahead of the edge detect: grain the detector can see becomes ink
+# it draws. Light enough to leave the brick coursing and the window frames.
+DRAW="${RATE_STEP},scale=${OUT_W}:-2:flags=lanczos,hqdn3d=4:6:6:8,split[forwash][foredge];\
+[forwash]${WASH},${BLOOM}[c];\
 [foredge]${INK};\
-[c][ink]blend=all_mode=multiply:all_opacity=1.0,format=yuv420p"
+[c][ink]blend=all_mode=multiply:all_opacity=1.0,\
+vignette=PI/9,unsharp=5:5:0.5:5:5:0.0"
+
+# ---- depth of field ----
+# There is no depth map in a phone clip, so this is not true DOF: it is a radial
+# falloff, sharp through the middle and softening toward the corners, which is
+# what a fast lens does anyway and what the eye reads as depth. The mask is
+# generated once as an image rather than computed per frame, because geq is far
+# too slow to run 1700 times for a picture that never changes.
+DOF_SIGMA=${DOF_SIGMA:-3.2}
+DOFMASK=media-src/dofmask.png
+OUT_H=$($FP -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$DRAW_SRC" \
+  | awk -F, -v w="$OUT_W" '{h=int(w*$2/$1); print (h%2? h+1 : h)}')
+$FF -y -v error -f lavfi -i "color=black:s=${OUT_W}x${OUT_H},format=gray,\
+geq=lum='255*clip((hypot((X-W/2)/(W/2),(Y-H/2)/(H/2))-0.55)/0.5,0,1)',format=rgb24" \
+  -frames:v 1 "$DOFMASK"
+# The mask is a still, so as a looped input it never ends. maskedmerge has no
+# framesync `shortest`, so the length is pinned with -t instead: bounded by
+# construction rather than by hoping the graph ends when the video does.
+DRAWN_DUR=$(awk -v d="$SRC_DUR" -v s="$START" 'BEGIN{printf "%.3f", d-s}')
 
 mkdir -p public/media
-echo "drawing at ${OUT_W}w (crf ${CRF}) and ${SM_W}w (crf ${SM_CRF})..."
-# The phone cut is a downscale of the DRAWN picture, not a second drawing, so
+echo "painting at ${OUT_W}x${OUT_H} (crf ${CRF}) and ${SM_W}w (crf ${SM_CRF})..."
+# The phone cut is a downscale of the PAINTED picture, not a second painting, so
 # both cuts are the same artwork and the ink thins with the frame rather than
 # being redrawn at a size it was never tuned for.
 # GOP is 30, down from 60: scrolling back up is the one move that forces a real
 # seek, and a half-second keyframe interval halves what has to be decoded to
 # satisfy it.
-$FF -y -v warning -stats -ss "$START" -i "$DRAW_SRC" \
-  -filter_complex "[0:v]${DRAW},split[big][small];[small]scale=${SM_W}:-2:flags=lanczos[sm]" \
+$FF -y -v warning -stats -ss "$START" -i "$DRAW_SRC" -loop 1 -t "$DRAWN_DUR" -i "$DOFMASK" \
+  -filter_complex "[0:v]${DRAW},format=gbrp,split[shp][sft];\
+[sft]gblur=sigma=${DOF_SIGMA}[bl];[1:v]format=gbrp,scale=${OUT_W}:${OUT_H}[m];\
+[shp][bl][m]maskedmerge,format=yuv420p,split[big][small];\
+[small]scale=${SM_W}:-2:flags=lanczos[sm]" \
   -map "[big]" -an -c:v libx264 -preset slow -tune animation -crf "$CRF" \
     -profile:v high -g 30 -keyint_min 30 \
     -sc_threshold 0 -pix_fmt yuv420p -movflags +faststart public/media/walk.mp4 \
