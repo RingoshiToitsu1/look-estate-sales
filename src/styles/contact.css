@@ -5,42 +5,6 @@
    is the loudest thing on it.
    ============================================================ */
 
-/* ---------------- Hero band ---------------- */
-.chero {
-  background: var(--navy);
-  color: var(--paper);
-  /* 74px of fixed nav sits over the top of this. */
-  padding-block: calc(74px + clamp(3.5rem, 8vw, 6.5rem)) clamp(3.5rem, 8vw, 6rem);
-  position: relative;
-  overflow: hidden;
-}
-/* The sign's red arrow, abstracted: a single diagonal edge of colour. */
-.chero::after {
-  content: '';
-  position: absolute;
-  right: -8vw;
-  bottom: -35%;
-  width: 46vw;
-  height: 150%;
-  background: linear-gradient(115deg, transparent 48%, rgba(194, 14, 31, 0.5) 48.6%, rgba(194, 14, 31, 0) 72%);
-  pointer-events: none;
-}
-.chero .wrap { position: relative; z-index: 1; }
-.chero__title {
-  font-size: clamp(2.4rem, 1.5rem + 4vw, 4.6rem);
-  line-height: 1;
-  letter-spacing: -0.02em;
-  color: var(--paper);
-  max-width: 16ch;
-}
-.chero__actions {
-  margin-top: clamp(1.8rem, 4vw, 2.6rem);
-  display: flex;
-  align-items: center;
-  gap: 1.6rem;
-  flex-wrap: wrap;
-}
-
 /* ---------------- Body: copy beside the form ---------------- */
 .cmain__grid {
   display: grid;
@@ -221,29 +185,14 @@ a.cdetail__v:hover { color: var(--blue-deep); }
 }
 .cform__copy { margin-top: 0.9rem; }
 
-/* ---------------- Assurance strip ---------------- */
-.cassure {
-  border-top: 1px solid var(--paper-line);
-  padding-block: clamp(2.5rem, 5vw, 3.5rem);
-  background: var(--paper);
-}
-.cassure__line {
-  font-family: var(--font-display);
-  font-size: clamp(1.2rem, 1rem + 0.9vw, 1.6rem);
-  color: var(--ink);
-}
-.cassure__badges { margin-top: 1.2rem; }
-
 /* ---------------- Responsive ---------------- */
 @media (max-width: 960px) {
   .cmain__grid { grid-template-columns: 1fr; }
   /* Sticky is wrong once the form is stacked under the copy — it would
      pin the card and let the page scroll out from under it. */
   .cmain__formCol { position: static; }
-  .chero::after { display: none; }
 }
 
 @media (max-width: 560px) {
   .cform__row { grid-template-columns: 1fr; }
-  .chero__actions { align-items: flex-start; flex-direction: column; gap: 1.1rem; }
 }

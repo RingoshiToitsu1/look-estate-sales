@@ -11,9 +11,9 @@ const root = dirname(fileURLToPath(import.meta.url))
 // that, every cross-page link in the app is relative too — see linksFor() in
 // src/data.js.
 //
-// Two entries: the landing page, and /contact/ — the directory name is what
-// gives the contact page a trailing-slash URL that matches the live site,
-// with no server rewrite rules (which Pages doesn't offer anyway).
+// One entry per page. Each interior page lives in its own directory, which is
+// what gives it a trailing-slash URL matching the live site, with no server
+// rewrite rules (which Pages doesn't offer anyway).
 export default defineConfig({
   base: './',
   plugins: [react()],
@@ -21,6 +21,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(root, 'index.html'),
+        about: resolve(root, 'about/index.html'),
         contact: resolve(root, 'contact/index.html'),
       },
     },

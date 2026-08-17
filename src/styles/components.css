@@ -620,7 +620,9 @@ a.reviews__badge:hover { border-color: var(--blue); color: var(--blue-deep); }
 /* ============================================================
    Responsive
    ============================================================ */
-@media (max-width: 960px) {
+/* The nav collapses earlier than everything else: seven links plus the phone
+   number and the booking button stop fitting before the layout does. */
+@media (max-width: 1100px) {
   .nav__links, .nav__cta { display: none; }
   .nav__toggle {
     display: inline-flex;
@@ -630,6 +632,9 @@ a.reviews__badge:hover { border-color: var(--blue); color: var(--blue-deep); }
     padding: 0.5rem;
     cursor: pointer;
   }
+}
+
+@media (max-width: 960px) {
   .intro__grid,
   .auctions__grid,
   .reviews__grid,

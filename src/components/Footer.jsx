@@ -44,8 +44,8 @@ export default function Footer({ page = 'home' }) {
                 {item.label}
               </a>
             ))}
+            {/* About now rides in NAV, so it isn't repeated here. */}
             <a href={L.consult}>Contact</a>
-            <a href="https://lookestatesales.com/about/" target="_blank" rel="noreferrer">About</a>
             <a href="https://lookestatesales.com/resources/" target="_blank" rel="noreferrer">Resources</a>
           </nav>
 

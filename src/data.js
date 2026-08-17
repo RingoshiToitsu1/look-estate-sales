@@ -13,6 +13,8 @@ export const SITE = {
 // that this landing page doesn't reproduce in full.
 export const NAV = [
   { label: 'Sales', href: '#sales' },
+  // `page` marks a real page of ours rather than an anchor on the landing page.
+  { label: 'About', page: 'about' },
   { label: 'Services', href: '#services' },
   { label: 'Auctions', href: '#auctions' },
   { label: 'How it works', href: '#process' },
@@ -21,22 +23,29 @@ export const NAV = [
 ]
 
 /**
- * Nav and Footer are shared by two pages that sit at different depths — the
- * landing page at the site root, the contact page one level down. Every link
- * is resolved relative to the page asking, never from '/', so the same markup
- * works on a project Pages URL (/look-estate-sales/) and on a custom domain
- * at the root.
+ * Nav and Footer are shared by pages that sit at different depths — the
+ * landing page at the site root, every other page one directory down. Every
+ * link is resolved relative to the page asking, never from '/', so the same
+ * markup works on a project Pages URL (/look-estate-sales/) and on a custom
+ * domain at the root.
  */
 export function linksFor(page = 'home') {
-  const onContact = page === 'contact'
-  const up = onContact ? '../' : ''
+  const up = page === 'home' ? '' : '../'
+  // A page never links to itself: the CTA becomes a jump to the thing you
+  // came for, and the About link becomes a scroll back up.
+  const pageHref = (name, self) => (page === name ? self : `${up}${name}/`)
+
   return {
     // The brand mark: scrolls to the top at home, goes home from anywhere else.
-    home: onContact ? '../' : '#top',
+    home: page === 'home' ? '#top' : '../',
     // The one CTA the whole site points at.
-    consult: onContact ? '#start' : './contact/',
-    nav: NAV.map((item) =>
-      item.external ? item : { ...item, href: up + item.href },
-    ),
+    consult: pageHref('contact', '#start'),
+    about: pageHref('about', '#top'),
+    nav: NAV.map((item) => {
+      if (item.external) return item
+      if (item.page) return { ...item, href: pageHref(item.page, '#top') }
+      // An anchor on the landing page — reachable from elsewhere by going up first.
+      return { ...item, href: up + item.href }
+    }),
   }
 }

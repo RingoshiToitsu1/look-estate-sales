@@ -1,0 +1,69 @@
+/* ============================================================
+   INTERIOR PAGES — shared chrome
+   The landing page opens on the cinematic walk-up. Every other page opens
+   on this instead: a navy band deep enough to seat the fixed nav, with the
+   sign's red arrow abstracted into the corner. Used by /contact/ and /about/.
+   ============================================================ */
+
+.phero {
+  background: var(--navy);
+  color: var(--paper);
+  /* 74px of fixed nav sits over the top of this. */
+  padding-block: calc(74px + clamp(3.5rem, 8vw, 6.5rem)) clamp(3.5rem, 8vw, 6rem);
+  position: relative;
+  overflow: hidden;
+}
+/* The sign's red arrow, abstracted: a single diagonal edge of colour. */
+.phero::after {
+  content: '';
+  position: absolute;
+  right: -8vw;
+  bottom: -35%;
+  width: 46vw;
+  height: 150%;
+  background: linear-gradient(115deg, transparent 48%, rgba(194, 14, 31, 0.5) 48.6%, rgba(194, 14, 31, 0) 72%);
+  pointer-events: none;
+}
+.phero .wrap { position: relative; z-index: 1; }
+
+.phero__title {
+  font-size: clamp(2.4rem, 1.5rem + 4vw, 4.6rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--paper);
+  max-width: 16ch;
+}
+.phero__lede {
+  margin-top: clamp(1.2rem, 3vw, 1.8rem);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: clamp(1.02rem, 0.98rem + 0.3vw, 1.2rem);
+  max-width: 58ch;
+}
+.phero__actions {
+  margin-top: clamp(1.8rem, 4vw, 2.6rem);
+  display: flex;
+  align-items: center;
+  gap: 1.6rem;
+  flex-wrap: wrap;
+}
+
+/* ---------------- Assurance strip ---------------- */
+.passure {
+  border-top: 1px solid var(--paper-line);
+  padding-block: clamp(2.5rem, 5vw, 3.5rem);
+  background: var(--paper);
+}
+.passure__line {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 1rem + 0.9vw, 1.6rem);
+  color: var(--ink);
+}
+.passure__badges { margin-top: 1.2rem; }
+
+@media (max-width: 960px) {
+  .phero::after { display: none; }
+}
+
+@media (max-width: 560px) {
+  .phero__actions { align-items: flex-start; flex-direction: column; gap: 1.1rem; }
+}

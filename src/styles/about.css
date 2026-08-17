@@ -1,0 +1,140 @@
+/* ============================================================
+   ABOUT PAGE
+   The story is long — six paragraphs of it — so it runs as a single
+   measured column with the photograph and a milestone rail tracking
+   alongside, rather than as a wall of full-width text.
+   ============================================================ */
+
+.story__grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: clamp(2.5rem, 5vw, 4.5rem);
+  align-items: start;
+}
+.story__prose {
+  margin-top: 1.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  color: var(--ink-soft);
+  max-width: 62ch;
+  font-size: 1.05rem;
+}
+/* The opening paragraph carries the page — set it a size larger. */
+.story__prose p:first-child {
+  font-size: 1.14rem;
+  color: var(--ink);
+}
+
+.story__aside { position: sticky; top: calc(74px + 1.5rem); }
+.story__figure { margin: 0; }
+.story__figure img {
+  width: 100%;
+  border-radius: 4px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  box-shadow: 0 24px 48px -28px rgba(8, 35, 78, 0.6);
+}
+.story__figure figcaption {
+  margin-top: 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+  color: var(--steel);
+}
+
+/* The road here, as a rail of numbered stops. */
+.rail {
+  margin-top: clamp(2rem, 4vw, 2.8rem);
+  display: flex;
+  flex-direction: column;
+}
+.rail__item {
+  position: relative;
+  padding: 0 0 1.4rem 1.6rem;
+  border-left: 1px solid var(--paper-line);
+}
+.rail__item:last-child { border-left-color: transparent; padding-bottom: 0; }
+/* The stop itself: a small red node on the line. */
+.rail__item::before {
+  content: '';
+  position: absolute;
+  left: -4.5px;
+  top: 0.45rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+}
+.rail__num {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  color: var(--blue-deep);
+}
+.rail__k {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.3;
+  margin-top: 0.25rem;
+  color: var(--ink);
+}
+.rail__d { margin-top: 0.3rem; font-size: 0.92rem; color: var(--steel); }
+
+/* ---------------- Mission ---------------- */
+.mission {
+  background: var(--navy);
+  color: var(--paper);
+  padding-block: clamp(3.5rem, 8vw, 6.5rem);
+  text-align: center;
+}
+.mission__quote {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 1.1rem + 2.6vw, 3rem);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  color: var(--paper);
+  max-width: 22ch;
+  margin-inline: auto;
+}
+
+/* ---------------- Crowd control ---------------- */
+.crowd { background: var(--tint); }
+.crowd__grid {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: center;
+}
+.crowd__figure img {
+  width: 100%;
+  border-radius: 4px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  box-shadow: 0 24px 48px -28px rgba(8, 35, 78, 0.5);
+}
+.crowd__prose {
+  margin-top: 1.5rem;
+  margin-bottom: 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  color: var(--ink-soft);
+  max-width: 56ch;
+}
+/* The strip sits on tint, not paper — its own top rule would double the seam. */
+.crowd + .passure { border-top: 0; }
+
+/* ---------------- Responsive ---------------- */
+@media (max-width: 960px) {
+  .story__grid,
+  .crowd__grid { grid-template-columns: 1fr; }
+  /* Once stacked, the aside is above the prose it was tracking — pinning it
+     would leave it hanging over content it no longer relates to. */
+  .story__aside { position: static; }
+  /* Photograph first reads as a caption to the heading below it. */
+  .crowd__figure { order: 2; }
+}

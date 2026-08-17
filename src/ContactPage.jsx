@@ -5,6 +5,7 @@ import { Reveal, Stagger, RevealItem } from './components/Reveal.jsx'
 import { Tag } from './components/Bits.jsx'
 import { SITE } from './data.js'
 import './styles/components.css'
+import './styles/page.css'
 import './styles/contact.css'
 
 const DETAILS = [
@@ -33,19 +34,19 @@ export default function ContactPage() {
       <Nav page="contact" solid />
 
       <main>
-        <section className="chero">
+        <section className="phero">
           <div className="wrap">
             <Reveal>
               <div className="eyebrow-row"><Tag onDark>Contact us</Tag></div>
             </Reveal>
             <Reveal delay={0.05}>
-              <h1 className="chero__title">
+              <h1 className="phero__title">
                 We sell, so you can
                 <br /><span className="serif-italic serif-italic--onDark">move forward.</span>
               </h1>
             </Reveal>
             <Reveal delay={0.1}>
-              <div className="chero__actions">
+              <div className="phero__actions">
                 <a className="btn btn--red" href={SITE.phoneHref}>Call {SITE.phone}</a>
                 <a className="link-arrow link-arrow--light" href="#start">
                   Or send us the details <span aria-hidden="true">→</span>
@@ -108,15 +109,15 @@ export default function ContactPage() {
           </div>
         </section>
 
-        <section className="cassure">
+        <section className="passure">
           <div className="wrap">
             <Reveal>
-              <p className="cassure__line">
+              <p className="passure__line">
                 Fully insured with liability and workers' compensation coverage.
               </p>
             </Reveal>
             <Reveal delay={0.05}>
-              <div className="reviews__badges cassure__badges">
+              <div className="reviews__badges passure__badges">
                 <a
                   href="https://www.bbb.org/us/mi/oakland/profile/estate-sales/look-estate-sales-llc-0332-90058135/"
                   target="_blank"
