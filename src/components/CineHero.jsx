@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react'
-import { SITE } from '../data.js'
+import { SITE, linksFor } from '../data.js'
 import { TRACK, TRACK_FPS } from '../data/track.js'
 import { MEDIA_V } from '../data/media.js'
 
@@ -368,7 +368,7 @@ export default function CineHero() {
               clients&rsquo; estate.
             </p>
             <div className="cine__actions">
-              <a className="btn btn--primary" href={SITE.consult} target="_blank" rel="noreferrer">
+              <a className="btn btn--primary" href={linksFor("home").consult}>
                 Book a free consultation
               </a>
               <a className="btn btn--ghostDark" href={SITE.phoneHref}>

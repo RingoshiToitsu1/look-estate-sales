@@ -7,7 +7,6 @@ export const SITE = {
   facebook: 'https://www.facebook.com/people/Look-Estate-Sales-LLC/61558664071645',
   instagram: 'https://www.instagram.com/look.estate.sales/',
   auctions: 'https://lookestatesales.hibid.com/',
-  consult: 'https://lookestatesales.com/contact',
 }
 
 // Nav links. In-page anchors scroll; external ones open the live pages
@@ -20,3 +19,24 @@ export const NAV = [
   { label: 'Reviews', href: '#reviews' },
   { label: 'FAQs', href: 'https://lookestatesales.com/faqs/', external: true },
 ]
+
+/**
+ * Nav and Footer are shared by two pages that sit at different depths — the
+ * landing page at the site root, the contact page one level down. Every link
+ * is resolved relative to the page asking, never from '/', so the same markup
+ * works on a project Pages URL (/look-estate-sales/) and on a custom domain
+ * at the root.
+ */
+export function linksFor(page = 'home') {
+  const onContact = page === 'contact'
+  const up = onContact ? '../' : ''
+  return {
+    // The brand mark: scrolls to the top at home, goes home from anywhere else.
+    home: onContact ? '../' : '#top',
+    // The one CTA the whole site points at.
+    consult: onContact ? '#start' : './contact/',
+    nav: NAV.map((item) =>
+      item.external ? item : { ...item, href: up + item.href },
+    ),
+  }
+}

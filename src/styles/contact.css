@@ -1,0 +1,249 @@
+/* ============================================================
+   CONTACT PAGE
+   Same system as the landing page — sign navy, sign red, the tag motif —
+   but no cinematic hero: this page is here to be filled in, so the form
+   is the loudest thing on it.
+   ============================================================ */
+
+/* ---------------- Hero band ---------------- */
+.chero {
+  background: var(--navy);
+  color: var(--paper);
+  /* 74px of fixed nav sits over the top of this. */
+  padding-block: calc(74px + clamp(3.5rem, 8vw, 6.5rem)) clamp(3.5rem, 8vw, 6rem);
+  position: relative;
+  overflow: hidden;
+}
+/* The sign's red arrow, abstracted: a single diagonal edge of colour. */
+.chero::after {
+  content: '';
+  position: absolute;
+  right: -8vw;
+  bottom: -35%;
+  width: 46vw;
+  height: 150%;
+  background: linear-gradient(115deg, transparent 48%, rgba(194, 14, 31, 0.5) 48.6%, rgba(194, 14, 31, 0) 72%);
+  pointer-events: none;
+}
+.chero .wrap { position: relative; z-index: 1; }
+.chero__title {
+  font-size: clamp(2.4rem, 1.5rem + 4vw, 4.6rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--paper);
+  max-width: 16ch;
+}
+.chero__actions {
+  margin-top: clamp(1.8rem, 4vw, 2.6rem);
+  display: flex;
+  align-items: center;
+  gap: 1.6rem;
+  flex-wrap: wrap;
+}
+
+/* ---------------- Body: copy beside the form ---------------- */
+.cmain__grid {
+  display: grid;
+  grid-template-columns: 1fr 0.92fr;
+  gap: clamp(2.5rem, 5vw, 5rem);
+  align-items: start;
+}
+.cmain__prose {
+  margin-top: 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  color: var(--ink-soft);
+  max-width: 56ch;
+  font-size: 1.05rem;
+}
+
+/* Contact facts, set as tag-motif rows rather than icon cards. */
+.cdetails {
+  margin-top: clamp(2.2rem, 4vw, 3rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1.3rem;
+}
+.cdetail {
+  padding-left: 1.15rem;
+  border-left: 2px solid var(--red);
+}
+.cdetail__k {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+.cdetail__v {
+  display: block;
+  margin-top: 0.4rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 1rem + 0.5vw, 1.45rem);
+  line-height: 1.15;
+  color: var(--ink);
+  transition: color 0.2s ease;
+}
+a.cdetail__v:hover { color: var(--blue-deep); }
+.cdetail__d { margin-top: 0.35rem; color: var(--steel); font-size: 0.92rem; }
+
+/* ---------------- The form card ---------------- */
+.cmain__formCol { position: sticky; top: calc(74px + 1.5rem); }
+
+.cform {
+  background: var(--tint);
+  border: 1px solid var(--paper-line);
+  border-radius: 6px;
+  padding: clamp(1.5rem, 3vw, 2.4rem);
+  box-shadow: 0 30px 60px -40px rgba(8, 35, 78, 0.5);
+}
+.cform__title {
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+  color: var(--ink);
+  line-height: 1.1;
+}
+.cform__note { margin-top: 0.7rem; color: var(--ink-soft); font-size: 0.95rem; max-width: 40ch; }
+
+.cform__form {
+  margin-top: 1.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.05rem;
+}
+
+/* Which of the two services — the live form's radio pair, as tappable chips. */
+.cform__kinds { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.cform__kinds legend {
+  padding: 0;
+  margin-bottom: 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--steel);
+}
+.cform__kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--paper-line);
+  border-radius: 40px;
+  background: var(--paper);
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+.cform__kind:hover { border-color: var(--blue); }
+.cform__kind.is-on { border-color: var(--blue); color: var(--blue-deep); background: #fff; }
+/* The native control stays in the accessibility tree and keeps keyboard
+   behaviour; the chip around it is what you see. */
+.cform__kind input {
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  border: 1px solid var(--steel);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.cform__kind input:checked {
+  border-color: var(--blue);
+  background: var(--blue);
+  box-shadow: inset 0 0 0 2.5px #fff;
+}
+.cform__kind input:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+
+.cform__row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.05rem; }
+.cform__field { display: flex; flex-direction: column; gap: 0.4rem; }
+.cform__field label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--steel);
+}
+.cform__field input,
+.cform__field textarea {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--paper-line);
+  border-radius: 3px;
+  padding: 0.8rem 0.9rem;
+  width: 100%;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.cform__field textarea { resize: vertical; min-height: 116px; line-height: 1.55; }
+.cform__field input::placeholder,
+.cform__field textarea::placeholder { color: #94A3B8; }
+.cform__field input:focus,
+.cform__field textarea:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(4, 107, 210, 0.15);
+}
+/* :user-invalid, not :invalid — the latter reddens every empty required
+   field before the visitor has typed a character. */
+.cform__field input:user-invalid,
+.cform__field textarea:user-invalid { border-color: var(--red); }
+
+.cform__submit { justify-content: center; margin-top: 0.4rem; }
+.cform__legal { font-size: 0.8rem; color: var(--steel); text-align: center; }
+
+/* Shown after submit, because mailto: can fail silently. */
+.cform__sent {
+  margin-top: 1.6rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--paper-line);
+}
+.cform__sentHead { font-family: var(--font-display); font-size: 1.15rem; color: var(--ink); }
+.cform__sentBody { margin-top: 0.5rem; font-size: 0.92rem; color: var(--ink-soft); }
+.cform__sentBody a { color: var(--blue-deep); font-weight: 600; }
+.cform__preview {
+  margin: 1rem 0 0;
+  padding: 0.9rem 1rem;
+  background: var(--paper);
+  border: 1px solid var(--paper-line);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
+}
+.cform__copy { margin-top: 0.9rem; }
+
+/* ---------------- Assurance strip ---------------- */
+.cassure {
+  border-top: 1px solid var(--paper-line);
+  padding-block: clamp(2.5rem, 5vw, 3.5rem);
+  background: var(--paper);
+}
+.cassure__line {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 1rem + 0.9vw, 1.6rem);
+  color: var(--ink);
+}
+.cassure__badges { margin-top: 1.2rem; }
+
+/* ---------------- Responsive ---------------- */
+@media (max-width: 960px) {
+  .cmain__grid { grid-template-columns: 1fr; }
+  /* Sticky is wrong once the form is stacked under the copy — it would
+     pin the card and let the page scroll out from under it. */
+  .cmain__formCol { position: static; }
+  .chero::after { display: none; }
+}
+
+@media (max-width: 560px) {
+  .cform__row { grid-template-columns: 1fr; }
+  .chero__actions { align-items: flex-start; flex-direction: column; gap: 1.1rem; }
+}

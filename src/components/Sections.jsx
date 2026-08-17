@@ -1,6 +1,10 @@
-import { SITE } from '../data.js'
+import { SITE, linksFor } from '../data.js'
 import { Reveal, Stagger, RevealItem } from './Reveal.jsx'
 import { Tag, CountUp } from './Bits.jsx'
+
+// Every section here belongs to the landing page, so its links resolve
+// from the site root.
+const L = linksFor('home')
 
 /* ---------------- Intro: what an estate sale with Look looks like ------------- */
 export function Intro() {
@@ -25,7 +29,7 @@ export function Intro() {
             </p>
           </Reveal>
           <Reveal delay={0.15}>
-            <a className="link-arrow" href={SITE.consult} target="_blank" rel="noreferrer">
+            <a className="link-arrow" href={L.consult}>
               Start with a free walk-through <span aria-hidden="true">→</span>
             </a>
           </Reveal>
@@ -172,7 +176,7 @@ export function Auctions() {
               <a className="btn btn--primary" href={SITE.auctions} target="_blank" rel="noreferrer">
                 See all our auctions
               </a>
-              <a className="link-arrow link-arrow--light" href={SITE.consult} target="_blank" rel="noreferrer">
+              <a className="link-arrow link-arrow--light" href={L.consult}>
                 Talk to us first <span aria-hidden="true">→</span>
               </a>
             </div>
@@ -243,7 +247,7 @@ export function Process() {
                 clean-out — with discounted commission options and trusted, five-star service.
               </p>
               <div className="process__ctaActions">
-                <a className="btn btn--primary" href={SITE.consult} target="_blank" rel="noreferrer">
+                <a className="btn btn--primary" href={L.consult}>
                   Book a free consultation
                 </a>
                 <a className="btn btn--ghost" href={SITE.phoneHref}>Call {SITE.phone}</a>

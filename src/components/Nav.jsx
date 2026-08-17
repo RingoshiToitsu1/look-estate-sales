@@ -1,16 +1,24 @@
 import { useEffect, useState } from 'react'
-import { SITE, NAV } from '../data.js'
+import { SITE, linksFor } from '../data.js'
 
-export default function Nav() {
-  const [scrolled, setScrolled] = useState(false)
+/**
+ * @param page   which page is rendering this — decides how links resolve.
+ * @param solid  start with the filled navy bar. The landing page earns it by
+ *               scrolling; pages without a dark hero need it from the first
+ *               paint, or white nav type lands on a white background.
+ */
+export default function Nav({ page = 'home', solid = false }) {
+  const [scrolled, setScrolled] = useState(solid)
   const [open, setOpen] = useState(false)
+  const L = linksFor(page)
 
   useEffect(() => {
+    if (solid) return
     const onScroll = () => setScrolled(window.scrollY > 40)
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
-  }, [])
+  }, [solid])
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : ''
@@ -20,7 +28,7 @@ export default function Nav() {
   return (
     <header className={`nav${scrolled ? ' nav--solid' : ''}`}>
       <div className="nav__inner wrap">
-        <a href="#top" className="nav__brand" aria-label={SITE.name}>
+        <a href={L.home} className="nav__brand" aria-label={SITE.name}>
           <span className="nav__mark" aria-hidden="true">
             {/* The sign's mark: a house with a magnifier inside it. */}
             <svg viewBox="0 0 40 40" width="30" height="30">
@@ -39,7 +47,7 @@ export default function Nav() {
         </a>
 
         <nav className="nav__links" aria-label="Primary">
-          {NAV.map((item) => (
+          {L.nav.map((item) => (
             <a
               key={item.label}
               href={item.href}
@@ -53,7 +61,7 @@ export default function Nav() {
 
         <div className="nav__cta">
           <a className="nav__phone" href={SITE.phoneHref}>{SITE.phone}</a>
-          <a className="btn btn--primary nav__book" href={SITE.consult} target="_blank" rel="noreferrer">
+          <a className="btn btn--primary nav__book" href={L.consult}>
             Book a consultation
           </a>
         </div>
@@ -71,7 +79,7 @@ export default function Nav() {
       {open && (
         <div className="nav__drawer" onClick={() => setOpen(false)}>
           <div className="nav__drawer-inner" onClick={(e) => e.stopPropagation()}>
-            {NAV.map((item) => (
+            {L.nav.map((item) => (
               <a
                 key={item.label}
                 href={item.href}
@@ -82,7 +90,7 @@ export default function Nav() {
                 {item.label}
               </a>
             ))}
-            <a className="btn btn--primary" href={SITE.consult} target="_blank" rel="noreferrer">
+            <a className="btn btn--primary" href={L.consult} onClick={() => setOpen(false)}>
               Book a consultation
             </a>
             <a className="nav__drawer-phone" href={SITE.phoneHref}>Call {SITE.phone}</a>
