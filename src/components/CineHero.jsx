@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from 'react'
 import { SITE } from '../data.js'
 import { TRACK, TRACK_FPS } from '../data/track.js'
+import { MEDIA_V } from '../data/media.js'
 
 /* ============================================================
    CINEMATIC INTRO — the real walkthrough, driven by scroll.
@@ -152,8 +153,11 @@ export default function CineHero() {
     })
 
     /* A phone gets the 1280-wide cut: under a third of the weight, and still
-       enough for a 400px-wide screen at DPR 3, which is asking for 1200. */
-    v.src = window.innerWidth < 760 ? './media/walk-sm.mp4' : './media/walk.mp4'
+       enough for a 400px-wide screen at DPR 3, which is asking for 1200.
+       ?v= is the media hash — see src/data/media.js. */
+    v.src =
+      (window.innerWidth < 760 ? './media/walk-sm.mp4' : './media/walk.mp4') +
+      `?v=${MEDIA_V}`
     v.load()
 
     let duration = 0
@@ -316,7 +320,7 @@ export default function CineHero() {
           muted
           playsInline
           preload="auto"
-          poster="./media/walk-poster.jpg"
+          poster={`./media/walk-poster.jpg?v=${MEDIA_V}`}
           aria-hidden="true"
         />
         {/* The scrim exists to give the copy a floor to stand on. With the copy

@@ -196,6 +196,23 @@ $FF -y -v warning -stats -ss "$START" -i "$DRAW_SRC" -loop 1 -t "$DRAWN_DUR" -i 
 
 $FF -y -v error -i public/media/walk.mp4 -frames:v 1 -q:v 2 public/media/walk-poster.jpg
 
+# ---- cache busting ----
+# Vite fingerprints what it bundles, but public/ is copied through verbatim, so
+# these three keep the same URL forever and a browser goes on serving the copy
+# it already has. The poster is the one you notice: the video is big enough to
+# be range-requested and tends to revalidate, so the page comes back with the
+# new walk behind a first frame from some previous version of the artwork.
+# Stamping the URL with a hash of the bytes means the address changes exactly
+# when the picture does, and never when it does not.
+MEDIA_V=$(cat public/media/walk.mp4 public/media/walk-sm.mp4 public/media/walk-poster.jpg | md5sum | cut -c1-10)
+cat > src/data/media.js <<JSEOF
+/* GENERATED — do not edit by hand. See scripts/rebuild-walk.sh.
+   A hash of the three media files, stamped onto their URLs so that a rebuild
+   invalidates the browser's copy and nothing else does. */
+export const MEDIA_V = '${MEDIA_V}'
+JSEOF
+echo "media version ${MEDIA_V}"
+
 # ---- the camera track, from the same START ----
 echo "measuring the camera track..."
 WALK_SRC=$DRAW_SRC WALK_START=$START FFMPEG=$FF node scripts/track.mjs
