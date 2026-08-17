@@ -35,24 +35,37 @@ export function Intro() {
           </Reveal>
         </div>
 
-        <Stagger className="intro__figures">
-          <RevealItem className="intro__figure intro__figure--tall">
-            <img
-              src="https://lookestatesales.com/wp-content/uploads/2024/07/Estate-Sale-Home.jpg"
-              alt="A Look Estate Sales event underway at a suburban home, signs directing shoppers"
-              loading="lazy"
-            />
-            <span className="intro__cap">Signs that actually drive traffic.</span>
-          </RevealItem>
-          <RevealItem className="intro__figure">
-            <img
-              src="https://lookestatesales.com/wp-content/uploads/2024/08/Service-with-a-smile-1-717x1024.jpg"
-              alt="A Look Estate Sales team member greeting shoppers"
-              loading="lazy"
-            />
-            <span className="intro__cap">Service with a smile.</span>
-          </RevealItem>
-        </Stagger>
+        {/* Photographed by BelleVue Media for the Canterbury Rd listing, and
+            served from public/media/house rather than hotlinked off their CDN. */}
+        <div className="intro__media">
+          <Stagger className="intro__figures">
+            <RevealItem className="intro__figure intro__figure--wide">
+              <img
+                src="./media/house/front.jpg"
+                alt="The front elevation of a recent Look Estate Sales property in Franklin, Michigan — a columned portico and brick walk"
+                loading="lazy"
+              />
+              <span className="intro__cap">Franklin, Michigan — a recent estate.</span>
+            </RevealItem>
+            <RevealItem className="intro__figure">
+              <img
+                src="./media/house/foyer.jpg"
+                alt="The entry hall and staircase of the Franklin property, cleared and staged"
+                loading="lazy"
+              />
+              <span className="intro__cap">Staged before the doors open.</span>
+            </RevealItem>
+            <RevealItem className="intro__figure">
+              <img
+                src="./media/house/sunroom.jpg"
+                alt="A skylit sunroom with a wall of windows in the Franklin property"
+                loading="lazy"
+              />
+              <span className="intro__cap">Every room, priced in the open.</span>
+            </RevealItem>
+          </Stagger>
+          <p className="intro__credit">Listing photography by BelleVue Media</p>
+        </div>
       </div>
     </section>
   )

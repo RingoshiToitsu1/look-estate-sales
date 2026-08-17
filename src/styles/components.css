@@ -317,10 +317,12 @@
   border-radius: 4px;
   object-fit: cover;
   box-shadow: 0 24px 50px -24px rgba(8,35,78,0.5);
+  /* Architectural photography is shot wide. Cropping it to a portrait tile
+     throws away the room, so the tiles take the camera's ratio instead. */
+  aspect-ratio: 3/2;
 }
-.intro__figure--tall { margin-top: 2.5rem; }
-.intro__figure--tall img { aspect-ratio: 3/4; }
-.intro__figure:not(.intro__figure--tall) img { aspect-ratio: 3/4; }
+/* The establishing shot: full width above the two details. */
+.intro__figure--wide { grid-column: 1 / -1; }
 .intro__cap {
   display: block;
   margin-top: 0.6rem;
@@ -328,6 +330,16 @@
   font-size: 0.66rem;
   letter-spacing: 0.06em;
   color: var(--steel);
+}
+.intro__credit {
+  margin-top: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--steel);
+  opacity: 0.75;
+  text-align: right;
 }
 
 /* ---------------- STATS (dark) ---------------- */
@@ -645,7 +657,6 @@ a.reviews__badge:hover { border-color: var(--blue); color: var(--blue-deep); }
   .process__steps { grid-template-columns: repeat(2, 1fr); }
   .articles__grid { grid-template-columns: repeat(2, 1fr); }
   .footer__grid { grid-template-columns: 1fr 1fr; }
-  .intro__figure--tall { margin-top: 0; }
 }
 
 @media (max-width: 560px) {
@@ -654,5 +665,7 @@ a.reviews__badge:hover { border-color: var(--blue); color: var(--blue-deep); }
   .articles__grid,
   .footer__grid { grid-template-columns: 1fr; }
   .footer__cta { flex-direction: column; align-items: flex-start; }
-  .intro__figures { grid-template-columns: 1fr 1fr; }
+  /* Two detail tiles side by side on a phone leave each about 140px wide —
+     too small to read a room in. Stack all three at full width instead. */
+  .intro__figures { grid-template-columns: 1fr; }
 }
